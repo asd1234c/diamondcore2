@@ -1231,6 +1231,9 @@ void World::SetInitialWorldSettings()
     ///- Initialize config settings
     LoadConfigSettings();
 
+	/// Server startup time
+    uint32 sStartTime = getMSTime();
+
     ///- Init highest guids before any table loading to prevent using not initialized guids in some code.
     sObjectMgr.SetHighestGuids();
 
@@ -1684,6 +1687,9 @@ void World::SetInitialWorldSettings()
     }
     sScriptMgr.OnServerStartup();
     sLog.outString("WORLD: World initialized");
+
+	uint32 sStartInterval = getMSTimeDiff(sStartTime, getMSTime());
+    sLog.outString( "DIAMOND-WORLDSERVER STARTUP TIME: %i minutes %i seconds", sStartInterval / 60000, (sStartInterval % 60000) / 1000 );
 }
 
 void World::DetectDBCLang()
