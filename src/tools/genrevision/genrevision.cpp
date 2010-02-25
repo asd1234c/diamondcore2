@@ -174,7 +174,6 @@ void extractDataFromGit(FILE* EntriesFile, std::string path, bool url, RawData& 
         char* acc_str  = NULL;
         char* repo_str = NULL;
 
-        // parse URL like git@github.com:mangos/mangos
         char url_buf[200];
         int res = sscanf(url_str,"git@%s",url_buf);
         if (res)
@@ -303,10 +302,8 @@ std::string generateHeader(char const* rev_str, char const* date_str, char const
     newData << "#ifndef __REVISION_H__" << std::endl;
     newData << "#define __REVISION_H__"  << std::endl;
     newData << " #define _BUILD_DIRECTIVE \"" << build_directive << "\"" << std::endl;
-    newData << " #define _REVISION \"" << rev_str << "\"" << std::endl;
+    newData << " #define REVISION_NR \"" << rev_str << "\"" << std::endl;
     newData << " #define _HASH \"" << hash_str << "\"" << std::endl;
-    newData << " #define _REVISION_DATE \"" << date_str << "\"" << std::endl;
-    newData << " #define _REVISION_TIME \"" << time_str << "\""<< std::endl;
     if (!strcmp(rev_str,"Archive") || !strcmp(rev_str,"*"))
     {
         newData << " #define FILEVER        0,0,0,0"<< std::endl;
@@ -327,16 +324,12 @@ std::string generateHeader(char const* rev_str, char const* date_str, char const
 int main(int argc, char **argv)
 {
     bool use_url = false;
-    bool hg_prefered = true;
     bool git_prefered = false;
-    bool svn_prefered = false;
     bool debug = false;
     std::string path;
 
     // Call: tool {options} [path]
-    //    -h use hg prefered (default)
     //    -g use git prefered
-    //    -s use svn prefered
     //    -r use only revision (without repo URL) (default)
     //    -u include repositire URL as commit URL or "rev at URL"
     //    -d compile directive debug
@@ -355,23 +348,11 @@ int main(int argc, char **argv)
 
         switch (argv[k][1])
         {
-            case 'h':
-                hg_prefered = true;
-                git_prefered = false;
-                svn_prefered = false;
-                continue;
             case 'g':
-                hg_prefered = false;
                 git_prefered = true;
-                svn_prefered = false;
                 continue;
             case 'r':
                 use_url = false;
-                continue;
-            case 's':
-                hg_prefered = false;
-                git_prefered = false;
-                svn_prefered = true;
                 continue;
             case 'u':
                 use_url = true;
@@ -398,84 +379,12 @@ int main(int argc, char **argv)
 
         bool res = false;
 
-        if (svn_prefered)
-        {
-            /// SVN data
-            res = extractDataFromSvn(path+".svn/entries",use_url,data);
-            if (!res)
-                res = extractDataFromSvn(path+"_svn/entries",use_url,data);
-            // HG data
-            if (!res)
-                res = extractDataFromHG(path+".hg/branchheads.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+"_hg/branchheads.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+".hg/branch.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+"_hg/branch.cache",path,use_url,data);
-            // GIT data
-            if (!res)
-                res = extractDataFromGit(path+".git/FETCH_HEAD",path,use_url,data);
-            if (!res)
-                res = extractDataFromGit(path+"_git/FETCH_HEAD",path,use_url,data);
-            // Archive data
-            if (!res)
-                res = extractDataFromArchive(path+".hg_archival.txt",path,use_url,data);
-            if (!res)
-                res = extractDataFromArchive(path+"_hg_archival.txt",path,use_url,data);
-        }
-        else if (git_prefered)
+        if (git_prefered)
         {
             // GIT data
             res = extractDataFromGit(path+".git/FETCH_HEAD",path,use_url,data);
             if (!res)
                 res = extractDataFromGit(path+"_git/FETCH_HEAD",path,use_url,data);
-            // HG data
-            if (!res)
-                res = extractDataFromHG(path+".hg/branchheads.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+"_hg/branchheads.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+".hg/branch.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+"_hg/branch.cache",path,use_url,data);
-           /// SVN data
-            if (!res)
-                res = extractDataFromSvn(path+".svn/entries",use_url,data);
-            if (!res)
-                res = extractDataFromSvn(path+"_svn/entries",use_url,data);
-            // Archive data
-            if (!res)
-                res = extractDataFromArchive(path+".hg_archival.txt",path,use_url,data);
-            if (!res)
-                res = extractDataFromArchive(path+"_hg_archival.txt",path,use_url,data);
-        }
-
-        else if (hg_prefered)
-        {
-            // HG data
-            res = extractDataFromHG(path+".hg/branchheads.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+"_hg/branchheads.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+".hg/branch.cache",path,use_url,data);
-            if (!res)
-                res = extractDataFromHG(path+"_hg/branch.cache",path,use_url,data);
-            /// SVN data
-            if (!res)
-                res = extractDataFromSvn(path+".svn/entries",use_url,data);
-            if (!res)
-                res = extractDataFromSvn(path+"_svn/entries",use_url,data);
-            // GIT data
-            if (!res)
-                res = extractDataFromGit(path+".git/FETCH_HEAD",path,use_url,data);
-            if (!res)
-                res = extractDataFromGit(path+"_git/FETCH_HEAD",path,use_url,data);
-            // Archive data
-            if (!res)
-                res = extractDataFromArchive(path+".hg_archival.txt",path,use_url,data);
-            if (!res)
-                res = extractDataFromArchive(path+"_hg_archival.txt",path,use_url,data);
         }
 
         if (res)

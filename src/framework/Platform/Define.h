@@ -158,7 +158,7 @@ typedef uint64 OBJECT_HANDLE;
 #endif
 
 #ifndef CLIENT_VER
-#define CLIENT_VER 313
+#define CLIENT_VER 332
 #endif
 
 #endif //DIAMOND_DEFINE_H

@@ -26,6 +26,7 @@
 
 #include "Platform/Define.h"
 #include "revision.h"
+#include "revision_nr.h"
 
 #define _PACKAGENAME "Diamondcore2 "
 
@@ -37,12 +38,12 @@
 
 #if PLATFORM == PLATFORM_WINDOWS
 # ifdef _WIN64
-#  define _FULLVERSION _PACKAGENAME "Rev: " _REVISION " " _BUILD_DIRECTIVE " Hash: " _HASH " (Win64," _ENDIAN_STRING ")"
+#  define _FULLVERSION _PACKAGENAME "Rev: " REVISION_NR " Build:" _BUILD_DIRECTIVE" "
 # else
-#  define _FULLVERSION _PACKAGENAME "Rev: " _REVISION " " _BUILD_DIRECTIVE " Hash: " _HASH " (Win32," _ENDIAN_STRING ")"
+#  define _FULLVERSION _PACKAGENAME "Rev: " REVISION_NR " Build:" _BUILD_DIRECTIVE" "
 # endif
 #else
-#  define _FULLVERSION _PACKAGENAME "Rev: " _REVISION " " _BUILD_DIRECTIVE " Hash: " _HASH " (Unix," _ENDIAN_STRING ")"
+#  define _FULLVERSION _PACKAGENAME "Rev: " REVISION_NR " Build:" _BUILD_DIRECTIVE" "
 #endif
 
 #define DEFAULT_PLAYER_LIMIT 100
