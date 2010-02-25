@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 50141
 File Encoding         : 65001
 
-Date: 2010-02-16 21:27:44
+Date: 2010-02-25 19:01:35
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -228,6 +228,7 @@ CREATE TABLE `channels` (
   `m_team` int(10) unsigned NOT NULL,
   `m_announce` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `m_moderate` tinyint(1) unsigned NOT NULL DEFAULT '0',
+  `m_public` tinyint(1) NOT NULL DEFAULT '1',
   `m_password` text,
   `BannedList` longtext,
   PRIMARY KEY (`m_name`(10),`m_team`)
