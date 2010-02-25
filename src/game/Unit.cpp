@@ -6832,7 +6832,7 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, AuraEffect* trigger
                         return false;
 
                     // heal amount
-                    basepoints0 = triggerAmount*damage/100;
+                    basepoints0 = triggerAmount*(std::min(damage,GetMaxHealth() - GetHealth()))/100;
                     target = this;
 
                     if (basepoints0)
@@ -14889,7 +14889,7 @@ void Unit::SetStunned(bool apply)
         SetUInt64Value(UNIT_FIELD_TARGET, 0);
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         CastStop();
-        AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
+//        AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
 
         // Creature specific
         if (GetTypeId() != TYPEID_PLAYER)
@@ -14919,7 +14919,7 @@ void Unit::SetStunned(bool apply)
             data << uint32(0);
             SendMessageToSet(&data,true);
 
-            RemoveUnitMovementFlag(MOVEMENTFLAG_ROOT);
+//            RemoveUnitMovementFlag(MOVEMENTFLAG_ROOT);
         }
     }
 }
@@ -14928,7 +14928,7 @@ void Unit::SetRooted(bool apply)
 {
     if (apply)
     {
-        AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
+//        AddUnitMovementFlag(MOVEMENTFLAG_ROOT);
 
         WorldPacket data(SMSG_FORCE_MOVE_ROOT, 10);
         data.append(GetPackGUID());
@@ -14947,7 +14947,7 @@ void Unit::SetRooted(bool apply)
             data << (uint32)2;
             SendMessageToSet(&data,true);
 
-            RemoveUnitMovementFlag(MOVEMENTFLAG_ROOT);
+//            RemoveUnitMovementFlag(MOVEMENTFLAG_ROOT);
         }
     }
 }

@@ -402,6 +402,13 @@ void Spell::SpellDamageSchoolDmg(uint32 effect_idx)
                         damage = (distance > radius) ? 0 : int32(m_spellInfo->EffectBasePoints[0]*((radius - distance)/radius));
                         break;
                     }
+                    // TODO: add spell specific target requirement hook for spells
+                    // Shadowbolts only affects targets with Shadow Mark (Gothik)
+                    case 27831:
+                    case 55638:
+                        if(!unitTarget->HasAura(27825))
+                            return;
+                        break;
                     // Cataclysmic Bolt
                     case 38441:
                     {
@@ -1386,25 +1393,6 @@ void Spell::EffectDummy(uint32 i)
                     // Runeforging Credit
                     m_caster->CastSpell(m_caster, 54586, true);
                     return;
-                }
-                // Great Feast
-                case 57337:
-                {
-                    if (!unitTarget)
-                        return;
-
-                    unitTarget->CastSpell(unitTarget, 58067, true);
-                    break;
-                }
-                //Fish Feast
-                case 57397:
-                {
-                    if (!unitTarget)
-                        return;
-
-                    unitTarget->CastSpell(unitTarget, 58648, true);
-                    unitTarget->CastSpell(unitTarget, 57398, true);
-                    break;
                 }
                 case 58418:                                 // Portal to Orgrimmar
                 case 58420:                                 // Portal to Stormwind
@@ -5526,6 +5514,25 @@ void Spell::EffectScriptEffect(uint32 effIndex)
                     unitTarget->CastSpell(unitTarget, 58477, true);
                     break;
                 }
+                // Great Feast
+                case 57337:
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 58067, true);
+                    break;
+                }
+                //Fish Feast
+                case 57397:
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 58648, true);
+                    unitTarget->CastSpell(unitTarget, 57398, true);
+                    break;
+                }
                 case 58941:                                 // Rock Shards
                     if (unitTarget && m_originalCaster)
                     {
@@ -5688,6 +5695,35 @@ void Spell::EffectScriptEffect(uint32 effIndex)
                     uint32 uiSpells[26] = {66704,66705,66706,66707,66709,66710,66711,66712,66713,66714,66715,66708,66708,66691,66692,66694,66695,66696,66697,66698,66699,66700,66701,66702,66703,66543};
 
                     m_caster->CastSpell(m_caster,uiSpells[uiRandom],true);
+                    break;
+                }
+                case 45668:                                 // Ultra-Advanced Proto-Typical Shortening Blaster
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
+                        return;
+                    
+                    if (roll_chance_i(50))                  // chance unknown, using 50
+                        return;
+                    
+                    static uint32 const spellPlayer[5] =
+                    {
+                        45674,                            // Bigger!
+                        45675,                            // Shrunk
+                        45678,                            // Yellow
+                        45682,                            // Ghost
+                        45684                             // Polymorph
+                    };
+                    
+                    static uint32 const spellTarget[5] = {
+                        45673,                            // Bigger!
+                        45672,                            // Shrunk
+                        45677,                            // Yellow
+                        45681,                            // Ghost
+                        45683                             // Polymorph
+                    };
+                    
+                    m_caster->CastSpell(m_caster, spellPlayer[urand(0,4)], true);
+                    unitTarget->CastSpell(unitTarget, spellTarget[urand(0,4)], true);
                     break;
                 }
             }

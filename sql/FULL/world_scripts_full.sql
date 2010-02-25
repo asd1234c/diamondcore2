@@ -49,6 +49,8 @@ UPDATE `gameobject_template` SET `ScriptName`='go_matrix_punchograph' WHERE `ent
 UPDATE `gameobject_template` SET `ScriptName`='go_jotunheim_cage' WHERE `entry`=192135;
 UPDATE `gameobject_template` SET `scriptname` = 'go_inconspicuous_landmark' WHERE `entry`=142189;
 UPDATE `gameobject_template` SET `ScriptName` = 'go_soulwell' WHERE `entry` IN (181621,193169);
+UPDATE `gameobject_template` SET `ScriptName`='go_dragonflayer_cage' WHERE entry IN (186566,186567,186568,186569,186570,186571,186572,186573,186574,186575);
+UPDATE `gameobject_template` SET `ScriptName`='go_black_cage' WHERE `entry`=195310;
 
 /* GUARD */
 UPDATE `creature_template` SET `ScriptName`='guard_azuremyst' WHERE `entry`=18038;
@@ -531,6 +533,7 @@ UPDATE `gameobject_template` SET `ScriptName` = 'go_iruxos' WHERE `entry` = 1765
 UPDATE `creature_template` SET `ScriptName`='npc_narm_faulk' WHERE `entry`=6177;
 
 /* DUROTAR */
+UPDATE `creature_template` SET `ScriptName`='npc_lazy_peon' WHERE `entry`=10556;
 
 /* DUSKWOOD */
 DELETE FROM `areatrigger_scripts` WHERE `entry`=4017;
@@ -1435,10 +1438,6 @@ UPDATE `creature_template` SET `ScriptName`='mob_ohgan' WHERE `entry`=14988;
 /* EOF */
 
 UPDATE `creature_template` SET `ScriptName` = 'npc_skywing' WHERE `entry`=22424;
-
-DELETE FROM areatrigger_scripts WHERE `entry`=4156;
-INSERT INTO areatrigger_scripts VALUES
-   (4156,'at_naxxramas_frostwyrm_wing');
 
 DELETE FROM areatrigger_scripts WHERE `entry`=3066;
 INSERT INTO areatrigger_scripts VALUES
