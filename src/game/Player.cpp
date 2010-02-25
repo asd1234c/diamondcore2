@@ -17009,7 +17009,7 @@ bool Player::Satisfy(AccessRequirement const *ar, uint32 target_map, bool report
 
         if (closed)
         {
-            GetSession()->SendAreaTriggerMessage(GetSession()->GetTrinityString(LANG_INSTANCE_CLOSED));
+            GetSession()->SendAreaTriggerMessage(GetSession()->GetDiamondString(LANG_INSTANCE_CLOSED));
             return false;
         }
 

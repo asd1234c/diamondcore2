@@ -753,7 +753,7 @@ enum ePrisonersOfWyrmskull
 bool GOHello_go_dragonflayer_cage(Player *pPlayer, GameObject *pGO)
 {
     Creature *pPrisoner = NULL;
-    Quest const* qInfo = objmgr.GetQuestTemplate(QUEST_PRISONERS_OF_WYRMSKULL);
+    Quest const* qInfo = sObjectMgr.GetQuestTemplate(QUEST_PRISONERS_OF_WYRMSKULL);
 
     if (pPlayer->GetQuestStatus(QUEST_PRISONERS_OF_WYRMSKULL) == QUEST_STATUS_INCOMPLETE &&
         ((pPrisoner = pGO->FindNearestCreature(NPC_PRISONER_PRIEST,2.0f)) ||
