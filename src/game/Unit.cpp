@@ -658,7 +658,6 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         if (damage >= pVictim->GetHealth())
         {
             pVictim->setDeathState(JUST_DIED);
-            pVictim->SetHealth(0);
 
             CreatureInfo const* cInfo = ((Creature*)pVictim)->GetCreatureInfo();
             if (cInfo && cInfo->lootid)
@@ -5376,10 +5375,20 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, AuraEffect* trigger
                 }
                 // Eye for an Eye
                 case 9799:
+				{
+                    // return damage % to attacker but < 50% own total health
+                    basepoints0 = 5*int32(damage)/100;
+                    if (basepoints0 > GetMaxHealth()/2)
+                        basepoints0 = GetMaxHealth()/2;
+
+                    triggered_spell_id = 25997;
+
+                    break;
+                }
                 case 25988:
                 {
                     // return damage % to attacker but < 50% own total health
-                    basepoints0 = triggerAmount*int32(damage)/100;
+                    basepoints0 = 10 * int32(damage) / 100;
                     if (basepoints0 > GetMaxHealth()/2)
                         basepoints0 = GetMaxHealth()/2;
 
@@ -9822,7 +9831,6 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
 
     // Taken/Done total percent damage auras
     float DoneTotalMod = 1.0f;
-    float TakenTotalMod = 1.0f;
     float ApCoeffMod = 1.0f;
     int32 DoneTotal = 0;
     int32 TakenTotal = 0;
@@ -9923,7 +9931,7 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
                 // Merciless Combat
                 if ((*i)->GetSpellProto()->SpellIconID == 2656)
                 {
-                    if (pVictim->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, spellProto, this))
+                    if ((pVictim->GetMaxHealth() * 35 / 100) >= pVictim->GetHealth())
                         DoneTotalMod *= (100.0f+(*i)->GetAmount())/100.0f;
                 }
                 // Tundra Stalker
@@ -10080,10 +10088,20 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
     }
 
     // ..taken
+    int32 maxPositiveMod = 0; // max of the positive amount aura (that increase the damage taken)
+    int32 sumNegativeMod = 0; // sum the negative amount aura (that reduce the damage taken)
     AuraEffectList const& mModDamagePercentTaken = pVictim->GetAuraEffectsByType(SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN);
     for (AuraEffectList::const_iterator i = mModDamagePercentTaken.begin(); i != mModDamagePercentTaken.end(); ++i)
         if ((*i)->GetMiscValue() & GetSpellSchoolMask(spellProto) )
-            TakenTotalMod *= ((*i)->GetAmount()+100.0f)/100.0f;
+        {
+            if ((*i)->GetAmount() > 0)
+            {
+                if ((*i)->GetAmount() > maxPositiveMod)
+                    maxPositiveMod = (*i)->GetAmount();
+            }
+            else
+                sumNegativeMod += (*i)->GetAmount();
+        }
 
     // .. taken pct: dummy auras
     AuraEffectList const& mDummyAuras = pVictim->GetAuraEffectsByType(SPELL_AURA_DUMMY);
@@ -10100,13 +10118,16 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
                     float mod = ((Player*)pVictim)->GetRatingBonusValue(CR_CRIT_TAKEN_MELEE)*(-8.0f);
                     if (mod < (*i)->GetAmount())
                         mod = (*i)->GetAmount();
-                    TakenTotalMod *= (mod+100.0f)/100.0f;
+                    sumNegativeMod += mod;
                 }
                 break;
             // Ebon Plague
             case 1933:
                 if ((*i)->GetMiscValue() & (spellProto ? GetSpellSchoolMask(spellProto) : 0))
-                    TakenTotalMod *= ((*i)->GetAmount()+100.0f)/100.0f;
+                {
+                    if ((*i)->GetAmount() > maxPositiveMod)
+                        maxPositiveMod = (*i)->GetAmount();
+                }
                 break;
         }
     }
@@ -10115,7 +10136,7 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
     AuraEffectList const& mOwnerTaken = pVictim->GetAuraEffectsByType(SPELL_AURA_MOD_DAMAGE_FROM_CASTER);
     for (AuraEffectList::const_iterator i = mOwnerTaken.begin(); i != mOwnerTaken.end(); ++i)
         if ((*i)->GetCasterGUID() == GetGUID() && (*i)->IsAffectedOnSpell(spellProto))
-            TakenTotalMod *= ((*i)->GetAmount()+100.0f)/100.0f;
+            sumNegativeMod += (*i)->GetAmount();
 
     // Mod damage from spell mechanic
     if (uint32 mechanicMask = GetAllSpellMechanicMask(spellProto))
@@ -10123,8 +10144,10 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
         AuraEffectList const& mDamageDoneMechanic = pVictim->GetAuraEffectsByType(SPELL_AURA_MOD_MECHANIC_DAMAGE_TAKEN_PERCENT);
         for (AuraEffectList::const_iterator i = mDamageDoneMechanic.begin(); i != mDamageDoneMechanic.end(); ++i)
             if (mechanicMask & uint32(1<<((*i)->GetMiscValue())))
-                TakenTotalMod *= ((*i)->GetAmount()+100.0f)/100.0f;
+                sumNegativeMod += (*i)->GetAmount();
     }
+
+    float TakenTotalMod = (sumNegativeMod+maxPositiveMod+100.0f)/100.0f;
 
     // Taken/Done fixed damage bonus auras
     int32 DoneAdvertisedBenefit  = SpellBaseDamageBonus(GetSpellSchoolMask(spellProto));
@@ -11110,8 +11133,8 @@ void Unit::MeleeDamageBonus(Unit *pVictim, uint32 *pdamage, WeaponAttackType att
             {
                 // Merciless Combat
                 if ((*i)->GetSpellProto()->SpellIconID == 2656)
-                {
-                    if (pVictim->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, spellProto, this))
+                {  
+                    if ((pVictim->GetMaxHealth() * 35 / 100) >= pVictim->GetHealth())
                         DoneTotalMod *= (100.0f+(*i)->GetAmount())/100.0f;
                 }
                 // Tundra Stalker
@@ -11777,26 +11800,7 @@ bool Unit::canDetectStealthOf(Unit const* target, float distance) const
 void Unit::SetVisibility(UnitVisibility x)
 {
     m_Visibility = x;
-
-    if (IsInWorld())
-    {
-        Map *m = GetMap();
-        CellPair p(Diamond::ComputeCellPair(GetPositionX(), GetPositionY()));
-        Cell cell(p);
-
-        if (GetTypeId() == TYPEID_PLAYER)
-        {
-            m->UpdatePlayerVisibility((Player*)this, cell, p);
-            m->UpdateObjectsVisibilityFor((Player*)this, cell, p);
-        }
-        else
-            m->UpdateObjectVisibility(this, cell, p);
-
-        AddToNotify(NOTIFY_AI_RELOCATION);
-    }
-
-    if (x == VISIBILITY_GROUP_STEALTH)
-        DestroyForNearbyPlayers();
+    UpdateObjectVisibility();
 }
 
 void Unit::UpdateSpeed(UnitMoveType mtype, bool forced)
@@ -12082,6 +12086,7 @@ void Unit::setDeathState(DeathState s)
         //without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         //do not why since in IncreaseMaxHealth currenthealth is checked
         SetHealth(0);
+        SetPower(getPowerType(),0);
     }
     else if (s == JUST_ALIVED)
         RemoveFlag (UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE); // clear skinnable for creature and player (at battleground)
@@ -13114,7 +13119,6 @@ void Unit::AddToWorld()
     if (!IsInWorld())
     {
         WorldObject::AddToWorld();
-        SetToNotify();
     }
 }
 
@@ -14619,14 +14623,6 @@ bool Unit::HandleAuraRaidProcFromCharge(AuraEffect* triggeredByAura)
 }
 /*-----------------------TRINITY-----------------------------*/
 
-void Unit::SetToNotify()
-{
-    if (GetTypeId() == TYPEID_PLAYER)
-        AddToNotify(NOTIFY_VISIBILITY_CHANGED | NOTIFY_AI_RELOCATION | NOTIFY_PLAYER_VISIBILITY);
-    else
-        AddToNotify(NOTIFY_VISIBILITY_CHANGED | NOTIFY_AI_RELOCATION);
-}
-
 void Unit::Kill(Unit *pVictim, bool durabilityLoss)
 {
     // Prevent killing unit twice (and giving reward from kill twice)
@@ -14643,8 +14639,6 @@ void Unit::Kill(Unit *pVictim, bool durabilityLoss)
     }
 
     //sLog.outError("%u kill %u", GetEntry(), pVictim->GetEntry());
-
-    pVictim->SetHealth(0);
 
     // find player: owner of controlled `this` or `this` itself maybe
     Player *player = GetCharmerOrOwnerPlayerOrPlayerItself();
@@ -15561,6 +15555,19 @@ void Unit::SetPhaseMask(uint32 newPhaseMask, bool update)
         if (m_SummonSlot[i])
             if (Creature *summon = GetMap()->GetCreature(m_SummonSlot[i]))
                 summon->SetPhaseMask(newPhaseMask,true);
+}
+
+void Unit::UpdateObjectVisibility(bool forced)
+{
+    if (!forced)
+        AddToNotify(NOTIFY_VISIBILITY_CHANGED);
+    else
+    {
+        WorldObject::UpdateObjectVisibility(true);
+        // call MoveInLineOfSight for nearby creatures
+        Trinity::AIRelocationNotifier notifier(*this);
+        VisitNearbyObject(GetMap()->GetVisibilityDistance(), notifier);
+    }
 }
 
 void Unit::KnockbackFrom(float x, float y, float speedXY, float speedZ)

@@ -2375,8 +2375,7 @@ void Player::SetGameMaster(bool on)
         getHostilRefManager().setOnlineOfflineState(true);
     }
 
-    //ObjectAccessor::UpdateVisibilityForPlayer(this);
-    SetToNotify();
+    UpdateObjectVisibility();
 }
 
 void Player::SetGMVisible(bool on)
@@ -4447,8 +4446,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     sOutdoorPvPMgr.HandlePlayerResurrects(this, newzone);
 
     // update visibility
-    //ObjectAccessor::UpdateVisibilityForPlayer(this);
-    SetToNotify();
+    UpdateObjectVisibility();
 
     if (!applySickness)
         return;
@@ -7468,7 +7466,7 @@ void Player::CastItemCombatSpell(Unit *target, WeaponAttackType attType, uint32 
                             continue;
                         // Check if item is useable (forms or disarm)
                         if (attType == BASE_ATTACK)
-                            if (!IsUseEquipedWeapon(true))
+                            if (!IsUseEquipedWeapon(true) && !IsInFeralForm())
                                 continue;
                     }
                     CastItemCombatSpell(target, attType, procVictim, procEx, item, proto);
@@ -20161,6 +20159,27 @@ template void Player::UpdateVisibilityOf(Corpse*        target, UpdateData& data
 template void Player::UpdateVisibilityOf(GameObject*    target, UpdateData& data, std::set<Unit*>& visibleNow);
 template void Player::UpdateVisibilityOf(DynamicObject* target, UpdateData& data, std::set<Unit*>& visibleNow);
 
+void Player::UpdateObjectVisibility(bool forced)
+{
+    if (!forced)
+        AddToNotify(NOTIFY_VISIBILITY_CHANGED);
+    else
+    {
+        Unit::UpdateObjectVisibility(true);
+        // updates visibility of all objects around point of view for current player
+        Trinity::VisibleNotifier notifier(*this);
+        m_seer->VisitNearbyObject(GetMap()->GetVisibilityDistance(), notifier);
+        notifier.SendToSelf();   // send gathered data
+    }
+}
+
+void Player::UpdateVisibilityForPlayer()
+{
+    Trinity::VisibleNotifier notifier(*this);
+    m_seer->VisitNearbyObject(GetMap()->GetVisibilityDistance(), notifier);
+    notifier.SendToSelf();   // send gathered data
+}
+
 void Player::InitPrimaryProfessions()
 {
     SetFreePrimaryProfessions(sWorld.getConfig(CONFIG_MAX_PRIMARY_TRADE_SKILL));
@@ -20386,7 +20405,7 @@ void Player::SendUpdateToOutOfRangeGroupMembers()
         pet->ResetAuraUpdateMaskForRaid();
 }
 
-void Player::SendTransferAborted(uint32 mapid, uint8 reason, uint8 arg)
+void Player::SendTransferAborted(uint32 mapid, TransferAbortReason reason, uint8 arg)
 {
     WorldPacket data(SMSG_TRANSFER_ABORTED, 4+2);
     data << uint32(mapid);
@@ -20396,8 +20415,7 @@ void Player::SendTransferAborted(uint32 mapid, uint8 reason, uint8 arg)
         case TRANSFER_ABORT_INSUF_EXPAN_LVL:
         case TRANSFER_ABORT_DIFFICULTY:
         case TRANSFER_ABORT_UNIQUE_MESSAGE:
-        case TRANSFER_ABORT_ZONE_IN_COMBAT:
-        case TRANSFER_ABORT_MAX_PLAYERS:
+            // these are the ONLY cases that have an extra argument in the packet!!!
             data << uint8(arg);
             break;
     }

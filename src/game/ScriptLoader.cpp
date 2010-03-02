@@ -399,6 +399,7 @@ void AddSC_icecrown();
 void AddSC_sholazar_basin();
 void AddSC_storm_peaks();
 void AddSC_zuldrak();
+void AddSC_crystalsong_forest();
 
 //outland
 void AddSC_boss_exarch_maladaar();           //Auchindoun Auchenai Crypts
@@ -879,6 +880,7 @@ void AddScripts()
     AddSC_sholazar_basin();
     AddSC_storm_peaks();
     AddSC_zuldrak();
+    AddSC_crystalsong_forest();
 
     //outland
     AddSC_boss_exarch_maladaar();           //Auchindoun Auchenai Crypts

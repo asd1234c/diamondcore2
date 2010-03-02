@@ -673,6 +673,7 @@
     <ClCompile Include="..\..\src\scripts\kalimdor\wailing_caverns\wailing_caverns.cpp" />
     <ClCompile Include="..\..\src\scripts\kalimdor\zulfarrak\zulfarrak.cpp" />
     <ClCompile Include="..\..\src\scripts\northrend\borean_tundra.cpp" />
+    <ClCompile Include="..\..\src\scripts\northrend\crystalsong_forest.cpp" />
     <ClCompile Include="..\..\src\scripts\northrend\dalaran.cpp" />
     <ClCompile Include="..\..\src\scripts\northrend\dragonblight.cpp" />
     <ClCompile Include="..\..\src\scripts\northrend\grizzly_hills.cpp" />

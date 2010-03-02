@@ -38,6 +38,7 @@ CREATE TABLE `access_requirement` (
   `heroic_quest_done` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `heroic_quest_failed_text` text,
   `comment` text,
+  `status` tinyint(3) unsigned DEFAULT '15' COMMENT 'instance status (open/close)',
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Access Requirements';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -402,6 +403,7 @@ INSERT INTO `command` VALUES
 ('gobject activate','2','Syntax: .gobject activate #guid\r\n\r\nActivates an object like a door or a button.'),
 ('gobject add','2','Syntax: .gobject add #id <spawntimeSecs>\r\n\r\nAdd a game object from game object templates to the world at your current location using the #id.\r\nspawntimesecs sets the spawntime, it is optional.\r\n\r\nNote: this is a copy of .gameobject.'),
 ('gobject delete','2','Syntax: .gobject delete #go_guid\r\nDelete gameobject with guid #go_guid.'),
+('gobject info', 2, 'Syntax: .gobject info [$object_entry]\r\n\r\nQuery Gameobject information for selected gameobject or given entry.');
 ('gobject move','2','Syntax: .gobject move #goguid [#x #y #z]\r\n\r\nMove gameobject #goguid to character coordinates (or to (#x,#y,#z) coordinates if its provide).'),
 ('gobject near','2','Syntax: .gobject near  [#distance]\r\n\r\nOutput gameobjects at distance #distance from player. Output gameobject guids and coordinates sorted by distance from character. If #distance not provided use 10 as default value.'),
 ('gobject setphase','2','Syntax: .gobject setphase #guid #phasemask\r\n\r\nGameobject with DB guid #guid phasemask changed to #phasemask with related world vision update for players. Gameobject state saved to DB and persistent.'),

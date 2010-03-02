@@ -405,6 +405,9 @@ UPDATE `creature_template` SET `ScriptName`='npc_ragged_john' WHERE `entry`=9563
 
 /* CAVERNS OF TIME */
 
+/* CRYSTALSONG FOREST */
+UPDATE `creature_template` SET `ScriptName`='npc_warmage_violetstand' WHERE `entry` IN (32369,32371,32372);
+
 /* MT. HYJAL */
 UPDATE `instance_template` SET `script`='instance_hyjal' WHERE `map`=534;
 UPDATE `creature_template` SET `ScriptName`='npc_tyrande_whisperwind' WHERE `entry`=17948;
@@ -720,7 +723,9 @@ UPDATE `creature_template` SET `ScriptName`='npc_apothecary_hanes' WHERE `entry`
 
 /* ICECROWN */
 UPDATE `creature_template` SET `ScriptName`='npc_arete' WHERE `entry`=29344;
-UPDATE `creature_template` SET `ScriptName`='valiant_challenge' WHERE `entry`=33518;
+UPDATE `creature_template` SET `ScriptName`='npc_dame_evniki_kapsalis' WHERE `entry`=34885;
+UPDATE `creature_template` SET `ScriptName`='npc_squire_david' WHERE `entry`=33447;
+UPDATE `creature_template` SET `ScriptName`='npc_argent_valiant' WHERE `entry`=33448;
 
 /* IRONFORGE */
 UPDATE `creature_template` SET `ScriptName`='npc_royal_historian_archesonus' WHERE `entry`=8879;
@@ -869,6 +874,9 @@ UPDATE `creature_template` SET `ScriptName`='boss_sapphiron' WHERE `entry`=15989
 UPDATE `creature_template` SET `ScriptName`='boss_kelthuzad' WHERE `entry`=15990;
 UPDATE `creature_template` SET `ScriptName`='' WHERE `entry` IN (16062,30000);
 UPDATE `creature_template` SET `ScriptName`='trigger_periodic' WHERE `entry` IN (16474,16697,16129);
+
+DELETE FROM `areatrigger_scripts` WHERE `entry`=4112;
+INSERT INTO `areatrigger_scripts`(`entry`,`ScriptName`) VALUES(4112,'at_kelthuzad_center');
 
 /* NETHERSTORM */
 UPDATE `gameobject_template` SET `ScriptName`='go_manaforge_control_console' WHERE `entry` IN (183770,183956,184311,184312);
@@ -1403,6 +1411,7 @@ UPDATE `creature_template` SET `ScriptName`='npc_korrak_bloodrager' WHERE `entry
 UPDATE `creature_template` SET `ScriptName`='npc_yggdras' WHERE `entry`=30014;
 UPDATE `creature_template` SET `ScriptName`='npc_released_offspring_harkoa' WHERE `entry`=28526;
 UPDATE `creature_template` SET `ScriptName`='npc_stinkbeard' WHERE `entry`=30017;
+UPDATE `creature_template` SET `ScriptName`= 'npc_crusade_recruit' WHERE `entry`=28090;
 
 /* ZUL'FARRAK */
 UPDATE `creature_template` SET `ScriptName`='npc_sergeant_bly' WHERE `entry`=7604;

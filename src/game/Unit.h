@@ -1734,6 +1734,7 @@ class Unit : public WorldObject
         bool canDetectInvisibilityOf(Unit const* u) const;
         bool canDetectStealthOf(Unit const* u, float distance) const;
         void SetPhaseMask(uint32 newPhaseMask, bool update);// overwrite WorldObject::SetPhaseMask
+        void UpdateObjectVisibility(bool forced = true);
 
         // virtual functions for all world objects types
         bool isVisibleForInState(Player const* u, bool inVisibleList) const;
@@ -1903,9 +1904,6 @@ class Unit : public WorldObject
         void RemovePetAura(PetAura const* petSpell);
 
         uint32 GetModelForForm(ShapeshiftForm form);
-
-        // relocation notification
-        void SetToNotify();
 
         void SetReducedThreatPercent(uint32 pct, uint64 guid)
         {
@@ -2087,5 +2085,20 @@ namespace Diamond
         }
     }
 }
+
+// binary function to sort unit based on the distance to a reference unit
+struct TargetDistanceOrder : public std::binary_function<const Unit *, const Unit *, bool>
+{
+    const Unit *me;
+
+    // pUnit: the reference unit from which the distance is computed.
+    TargetDistanceOrder(const Unit* pUnit) : me(pUnit) {};
+
+    // functor for operator "<"
+    bool operator()(const Unit* left, const Unit* right) const
+    {
+        return (me->GetExactDistSq(left) < me->GetExactDistSq(right));
+    }
+};
 
 #endif

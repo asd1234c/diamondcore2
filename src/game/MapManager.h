@@ -31,8 +31,6 @@
 
 class Transport;
 
-#define DEFAULT_VISIBILITY_NOTIFY_PERIOD      1100
-
 class MapManager : public Diamond::Singleton<MapManager, Diamond::ClassLevelLockable<MapManager, ACE_Thread_Mutex> >
 {
 

@@ -795,14 +795,17 @@ bool Creature::Create(uint32 guidlow, Map *map, uint32 phaseMask, uint32 Entry, 
             SetByteValue(UNIT_FIELD_BYTES_0, 2, minfo->gender);
         }
 
-        switch (GetCreatureInfo()->InhabitType)
+        if (GetCreatureInfo()->InhabitType & INHABIT_AIR)
         {
-            case INHABIT_AIR:
-                AddUnitMovementFlag(MOVEMENTFLAG_FLY_MODE | MOVEMENTFLAG_FLYING);
-                break;
-            case INHABIT_WATER:
-                AddUnitMovementFlag(MOVEMENTFLAG_SWIMMING);
-                break;
+            if (GetDefaultMovementType() == IDLE_MOTION_TYPE)
+				AddUnitMovementFlag(MOVEMENTFLAG_FLY_MODE);
+            else
+                AddUnitMovementFlag(MOVEMENTFLAG_FLY_MODE|MOVEMENTFLAG_FLYING);
+        }
+
+        if (GetCreatureInfo()->InhabitType & INHABIT_WATER)
+        {
+            AddUnitMovementFlag(MOVEMENTFLAG_SWIMMING);
         }
     }
     return bResult;
@@ -1481,6 +1484,9 @@ void Creature::setDeathState(DeathState s)
         if (m_formation && m_formation->getLeader() == this)
             m_formation->FormationReset(true);
 
+        SetHealth(0);
+        SetPower(getPowerType(),0);
+
         if ((canFly() || IsFlying()) && FallGround())
             return;
 
@@ -1561,7 +1567,6 @@ void Creature::Respawn(bool force)
         if (m_isDeadByDefault)
         {
             setDeathState(JUST_DIED);
-            SetHealth(0);
             i_motionMaster.Clear();
             clearUnitState(UNIT_STAT_ALL_STATE);
             LoadCreaturesAddon(true);
@@ -1588,7 +1593,7 @@ void Creature::Respawn(bool force)
             poolhandler.UpdatePool<Creature>(poolid, GetDBTableGUIDLow());
     }
 
-    SetToNotify();
+    UpdateObjectVisibility();
 }
 
 void Creature::ForcedDespawn(uint32 timeMSToDespawn)
@@ -1605,7 +1610,6 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn)
         setDeathState(JUST_DIED);
 
     RemoveCorpse();
-    SetHealth(0);                                           // just for nice GM-mode view
 }
 
 bool Creature::IsImmunedToSpell(SpellEntry const* spellInfo)
