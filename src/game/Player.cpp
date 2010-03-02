@@ -20167,7 +20167,7 @@ void Player::UpdateObjectVisibility(bool forced)
     {
         Unit::UpdateObjectVisibility(true);
         // updates visibility of all objects around point of view for current player
-        Trinity::VisibleNotifier notifier(*this);
+        Diamond::VisibleNotifier notifier(*this);
         m_seer->VisitNearbyObject(GetMap()->GetVisibilityDistance(), notifier);
         notifier.SendToSelf();   // send gathered data
     }
@@ -20175,7 +20175,7 @@ void Player::UpdateObjectVisibility(bool forced)
 
 void Player::UpdateVisibilityForPlayer()
 {
-    Trinity::VisibleNotifier notifier(*this);
+    Diamond::VisibleNotifier notifier(*this);
     m_seer->VisitNearbyObject(GetMap()->GetVisibilityDistance(), notifier);
     notifier.SendToSelf();   // send gathered data
 }

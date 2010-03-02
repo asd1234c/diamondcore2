@@ -2272,12 +2272,11 @@ void WorldObject::DestroyForNearbyPlayers()
     }
 }
 
-void WorldObject::UpdateObjectVisibility()
+void WorldObject::UpdateObjectVisibility(bool /*forced*/)
 {
-    CellPair p = Diamond::ComputeCellPair(GetPositionX(), GetPositionY());
-    Cell cell(p);
-
-    GetMap()->UpdateObjectVisibility(this, cell, p);
+    //updates object's visibility for nearby players
+    Diamond::VisibleChangesNotifier notifier(*this);
+    VisitNearbyWorldObject(GetMap()->GetVisibilityDistance(), notifier);
 }
 
 struct WorldObjectChangeAccumulator

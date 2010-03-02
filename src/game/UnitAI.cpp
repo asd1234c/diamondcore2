@@ -83,7 +83,7 @@ bool UnitAI::DoSpellAttackIfReady(uint32 spell)
 }
 
 // default predicate function to select target based on distance, player and/or aura criteria
-+struct DefaultTargetSelector : public std::unary_function<Unit *, bool>
+struct DefaultTargetSelector : public std::unary_function<Unit *, bool>
 {
     const Unit *me;
     float m_dist;
