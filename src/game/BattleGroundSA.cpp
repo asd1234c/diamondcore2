@@ -43,14 +43,14 @@ BattleGroundSA::~BattleGroundSA()
 
 void BattleGroundSA::Reset()
 {
-  TotalTime = 0;
-  attackers = ( (urand(0,1)) ? TEAM_ALLIANCE : TEAM_HORDE);
-  for (uint8 i = 0; i <= 5; i++)
+	TotalTime = 0;
+    attackers = ( (urand(0,1)) ? TEAM_ALLIANCE : TEAM_HORDE);
+    for (uint8 i = 0; i <= 5; i++)
     {
-      GateStatus[i] = BG_SA_GATE_OK;
+		GateStatus[i] = BG_SA_GATE_OK;
     }
-  ShipsStarted = false;
-  status = BG_SA_WARMUP;
+	ShipsStarted = false;
+	status = BG_SA_WARMUP;
 }
 
 bool BattleGroundSA::SetupBattleGround()
@@ -638,32 +638,30 @@ void BattleGroundSA::EventPlayerUsedGO(Player* Source, GameObject* object)
   if (object->GetEntry() == BG_SA_ObjEntries[BG_SA_TITAN_RELIC])
     {
       if (Source->GetTeamId() == attackers)
-	{
-
-	  if (status == BG_SA_ROUND_ONE)
-	    {
-	      RoundScores[0].winner = attackers;
-	      RoundScores[0].time = TotalTime;
-	      attackers = (attackers == TEAM_ALLIANCE) ? TEAM_HORDE : TEAM_ALLIANCE;
-	      status = BG_SA_SECOND_WARMUP;
-	      TotalTime = 0;
-	      ToggleTimer();
-	      ResetObjs();
+        {
+            if (status == BG_SA_ROUND_ONE)
+            {
+                RoundScores[0].winner = attackers;
+                RoundScores[0].time = TotalTime;
+                attackers = (attackers == TEAM_ALLIANCE) ? TEAM_HORDE : TEAM_ALLIANCE;
+                status = BG_SA_SECOND_WARMUP;
+                TotalTime = 0;
+                ToggleTimer();
+                ResetObjs();
+            }
+            else if (status == BG_SA_ROUND_TWO)
+            {
+                RoundScores[1].winner = attackers;
+                RoundScores[1].time = TotalTime;ToggleTimer();
+                if (RoundScores[0].time == RoundScores[1].time)
+                    EndBattleGround(NULL);
+                else if (RoundScores[0].time < RoundScores[1].time)
+                    EndBattleGround(RoundScores[0].winner == TEAM_ALLIANCE ? ALLIANCE : HORDE);
+                else
+                    EndBattleGround(RoundScores[1].winner == TEAM_ALLIANCE ? ALLIANCE : HORDE);
+	        }
 	    }
-	  else if (status == BG_SA_ROUND_TWO)
-	    {
-	      RoundScores[1].winner = attackers;
-	      RoundScores[1].time = TotalTime;
-	      ToggleTimer();
-	      if (RoundScores[0].time < RoundScores[1].time)
-		EndBattleGround(RoundScores[0].winner == TEAM_ALLIANCE ? ALLIANCE : HORDE);
-	      else
-		EndBattleGround(RoundScores[1].winner == TEAM_ALLIANCE ? ALLIANCE : HORDE);
-	      
-	    }
-	}
     }
-
 }
 
 void BattleGroundSA::ToggleTimer()
@@ -673,3 +671,19 @@ void BattleGroundSA::ToggleTimer()
   UpdateWorldState(BG_SA_ENABLE_TIMER, (TimerEnabled) ? 1 : 0);
 
 }
+
+void BattleGroundSA::EndBattleGround(uint32 winner)
+{
+    //honor reward for winning
+    if (winner == ALLIANCE)
+        RewardHonorToTeam(GetBonusHonorFromKill(BG_SA_HONOR_WIN), ALLIANCE);
+    else if (winner == HORDE)
+        RewardHonorToTeam(GetBonusHonorFromKill(BG_SA_HONOR_WIN), HORDE);
+    
+    //complete map_end rewards (even if no team wins)
+    RewardHonorToTeam(GetBonusHonorFromKill(BG_SA_HONOR_END), ALLIANCE);
+    RewardHonorToTeam(GetBonusHonorFromKill(BG_SA_HONOR_END), HORDE);
+
+    BattleGround::EndBattleGround(winner);
+}
+

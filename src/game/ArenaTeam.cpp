@@ -175,7 +175,7 @@ bool ArenaTeam::AddMember(const uint64& PlayerGuid)
 
 bool ArenaTeam::LoadArenaTeamFromDB(QueryResult_AutoPtr arenaTeamDataResult)
 {
-    if(!arenaTeamDataResult)
+    if (!arenaTeamDataResult)
         return false;
 
     Field *fields = arenaTeamDataResult->Fetch();
@@ -202,7 +202,7 @@ bool ArenaTeam::LoadArenaTeamFromDB(QueryResult_AutoPtr arenaTeamDataResult)
 
 bool ArenaTeam::LoadMembersFromDB(QueryResult_AutoPtr arenaTeamMembersResult)
 {
-    if(!arenaTeamMembersResult)
+    if (!arenaTeamMembersResult)
         return false;
 
 bool captainPresentInTeam = false;
@@ -250,7 +250,7 @@ bool captainPresentInTeam = false;
         m_members.push_back(newmember);
     }while (arenaTeamMembersResult->NextRow());
 
-    if(Empty() || !captainPresentInTeam)
+    if (Empty() || !captainPresentInTeam)
     {
         // arena team is empty or captain is not in team, delete from db
         sLog.outErrorDb("ArenaTeam %u does not have any members or its captain is not in team, disbanding it...", m_TeamId);
@@ -324,7 +324,7 @@ void ArenaTeam::Disband(WorldSession *session)
 
     if (session)
     {
-        if(Player *player = session->GetPlayer())
+        if (Player *player = session->GetPlayer())
             sLog.outArena("Player: %s [GUID: %u] disbanded arena team type: %u [Id: %u].", player->GetName(), player->GetGUIDLow(), GetType(), GetId());
     }
 

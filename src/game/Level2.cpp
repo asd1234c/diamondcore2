@@ -2126,26 +2126,27 @@ bool ChatHandler::HandleModifyPhaseCommand(const char* args)
 //show info of gameobject
 bool ChatHandler::HandleGOInfoCommand(const char* args)
 {
-    uint32 entry = atoi((char*)args);
+    uint32 entry = 0;
     uint32 type = 0;
     uint32 displayid = 0;
     std::string name;
 
-    if(!*args)
+    if (!*args)
     {
-        WorldObject * obj = getSelectedObject();
-        entry = obj->GetEntry();
+        if (WorldObject * obj = getSelectedObject())
+            entry = obj->GetEntry();
     }
+    else
+        entry = atoi((char*)args);
 
-    QueryResult_AutoPtr result = WorldDatabase.PQuery("SELECT `type` `displayid` `name` FROM gameobject_template WHERE entry =  %u", entry);
+    GameObjectInfo const* goinfo = sObjectMgr.GetGameObjectInfo(entry);
 
-    if(!result)
+    if (!goinfo)
         return false;
 
-    Field * fields = result->Fetch();
-    type = fields[0].GetUInt32();
-    displayid = fields[1].GetUInt32();
-    name = fields[3].GetString();
+    type = goinfo->type;
+    displayid = goinfo->displayId;
+    name = goinfo->name;
 
     PSendSysMessage(LANG_GOINFO_ENTRY, entry);
     PSendSysMessage(LANG_GOINFO_TYPE, type);
@@ -2196,9 +2197,10 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
 
         //                                                     0          1      2      3        4     5
         QueryResult_AutoPtr result = CharacterDatabase.PQuery("SELECT totaltime, level, money, account, race, class FROM characters WHERE guid = '%u'", GUID_LOPART(target_guid));
-        if (!result)
+		if (!result)
             return false;
 
+		// Part 1: Show information from selected character
         Field *fields = result->Fetch();
         total_player_time = fields[0].GetUInt32();
         level = fields[1].GetUInt32();
@@ -2208,13 +2210,25 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
         Class = fields[5].GetUInt8();
     }
 
+	std::string number_of_chars = GetDiamondString(LANG_ERROR);
+	QueryResult_AutoPtr result2 = CharacterDatabase.PQuery("SELECT count(name) FROM characters WHERE account = '%u'", accId);
+	
+	if (result2)
+	{
+		Field* fields = result2->Fetch();
+		number_of_chars = fields[0].GetCppString();
+	}
+
+	PSendSysMessage(LANG_PINFO_ALL_CHAR_COUNT, number_of_chars.c_str());
+
     std::string username = GetDiamondString(LANG_ERROR);
     std::string email = GetDiamondString(LANG_ERROR);
     std::string last_ip = GetDiamondString(LANG_ERROR);
     uint32 security = 0;
     std::string last_login = GetDiamondString(LANG_ERROR);
 
-    QueryResult_AutoPtr result = loginDatabase.PQuery("SELECT username,gmlevel,email,last_ip,last_login FROM account WHERE id = '%u'", accId);
+    QueryResult_AutoPtr result = loginDatabase.PQuery("SELECT username, gmlevel, email, last_ip, last_login FROM account WHERE id = '%u'", accId);
+	
     if (result)
     {
         Field* fields = result->Fetch();
@@ -2273,8 +2287,8 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
     uint32 gold = money /GOLD;
     uint32 silv = (money % GOLD) / SILVER;
     uint32 copp = (money % GOLD) % SILVER;
-    PSendSysMessage(LANG_PINFO_LEVEL, race_s.c_str(), Class_s.c_str(), timeStr.c_str(), level, gold, silv, copp);
-
+    PSendSysMessage(LANG_PINFO_LEVEL, race_s.c_str(), Class_s.c_str(), timeStr.c_str(), level, gold, silv, copp, number_of_chars);
+	
     return true;
 }
 

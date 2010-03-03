@@ -1,0 +1,1 @@
+INSERT INTO `diamond_string` (entry, content_default) VALUES ('1130', 'How much characters have this account?: %s');

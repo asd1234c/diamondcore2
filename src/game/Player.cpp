@@ -2025,9 +2025,9 @@ void Player::RegenerateAll()
     Regenerate(POWER_MANA);
 
     // Runes act as cooldowns, and they don't need to send any data
-    if(getClass() == CLASS_DEATH_KNIGHT)
+    if (getClass() == CLASS_DEATH_KNIGHT)
         for (uint32 i = 0; i < MAX_RUNES; ++i)
-            if(uint32 cd = GetRuneCooldown(i))
+            if (uint32 cd = GetRuneCooldown(i))
                 SetRuneCooldown(i, (cd > m_regenTimer) ? cd - m_regenTimer : 0);
 
     if (m_regenTimerCount >= 2000)
@@ -15510,6 +15510,7 @@ bool Player::LoadFromDB( uint32 guid, SqlQueryHolder *holder )
 
     SetUInt32Value(UNIT_FIELD_LEVEL, fields[7].GetUInt8());
     SetUInt32Value(PLAYER_XP, fields[8].GetUInt32());
+
     uint32 money = fields[9].GetUInt32();
     if (money > MAX_MONEY_AMOUNT)
         money = MAX_MONEY_AMOUNT;
@@ -15553,7 +15554,7 @@ bool Player::LoadFromDB( uint32 guid, SqlQueryHolder *holder )
     uint32 transGUID = fields[31].GetUInt32();
     Relocate(fields[13].GetFloat(),fields[14].GetFloat(),fields[15].GetFloat(),fields[17].GetFloat());
     uint32 mapId = fields[16].GetUInt32();
-    uint32 instanceId = fields[41].GetFloat();
+    uint32 instanceId = fields[59].GetFloat();
 
     uint32 difficulty = fields[39].GetUInt32();
     if (difficulty >= MAX_DUNGEON_DIFFICULTY)
@@ -21871,7 +21872,7 @@ uint32 Player::GetRuneBaseCooldown(uint8 index)
     AuraEffectList const& regenAura = GetAuraEffectsByType(SPELL_AURA_MOD_POWER_REGEN_PERCENT);
     for(AuraEffectList::const_iterator i = regenAura.begin();i != regenAura.end(); ++i)
     {
-        if((*i)->GetMiscValue() == POWER_RUNE && (*i)->GetMiscValueB() == rune)
+        if ((*i)->GetMiscValue() == POWER_RUNE && (*i)->GetMiscValueB() == rune)
             cooldown = cooldown*(100-(*i)->GetAmount())/100;
     }
 

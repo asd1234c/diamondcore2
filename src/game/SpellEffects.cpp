@@ -406,7 +406,7 @@ void Spell::SpellDamageSchoolDmg(uint32 effect_idx)
                     // Shadowbolts only affects targets with Shadow Mark (Gothik)
                     case 27831:
                     case 55638:
-                        if(!unitTarget->HasAura(27825))
+                        if (!unitTarget->HasAura(27825))
                             return;
                         break;
                     // Cataclysmic Bolt
@@ -1567,7 +1567,7 @@ void Spell::EffectDummy(uint32 i)
                     m_caster->ModifyPower(POWER_RAGE, -m_powerCost);
                 }
 
-                if(rage > 300)
+                if (rage > 300)
                     rage = 300;
 
                 bp = damage+int32(rage * m_spellInfo->DmgMultiplier[i] +
@@ -2219,7 +2219,7 @@ void Spell::EffectTriggerRitualOfSummoning(uint32 i)
 
 void Spell::EffectForceCast(uint32 i)
 {
-    if( !unitTarget )
+    if ( !unitTarget )
         return;
 
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[i];
@@ -2227,7 +2227,7 @@ void Spell::EffectForceCast(uint32 i)
     // normal case
     SpellEntry const *spellInfo = sSpellStore.LookupEntry( triggered_spell_id );
 
-    if(!spellInfo)
+    if (!spellInfo)
     {
         sLog.outError("EffectForceCast of spell %u: triggering unknown spell id %i", m_spellInfo->Id,triggered_spell_id);
         return;
@@ -2235,7 +2235,7 @@ void Spell::EffectForceCast(uint32 i)
 
     if (damage)
     {
-        if(m_spellInfo->EffectBasePoints[i] > 0)
+        if (m_spellInfo->EffectBasePoints[i] > 0)
         {
             switch(m_spellInfo->Id)
             {
@@ -6880,9 +6880,9 @@ void Spell::EffectPlayerPull(uint32 i)
         return;
 
     float speedZ;
-    if(m_spellInfo->EffectMiscValue[i])
+    if (m_spellInfo->EffectMiscValue[i])
         speedZ = float(m_spellInfo->EffectMiscValue[i])/10;
-    else if(m_spellInfo->EffectMiscValueB[i])
+    else if (m_spellInfo->EffectMiscValueB[i])
         speedZ = float(m_spellInfo->EffectMiscValueB[i])/10;
     else
         speedZ = 10.0f;

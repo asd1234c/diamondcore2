@@ -54,7 +54,7 @@ VisibleNotifier::SendToSelf()
     {
         i_player.m_clientGUIDs.erase(*it);
         i_data.AddOutOfRangeGUID(*it);
-        if(IS_PLAYER_GUID(*it))
+        if (IS_PLAYER_GUID(*it))
         {
             Player* plr = ObjectAccessor::FindPlayer(*it);
             if (plr && plr->IsInWorld() && !plr->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
@@ -114,11 +114,11 @@ VisibleChangesNotifier::Visit(DynamicObjectMapType &m)
 
 inline void CreatureUnitRelocationWorker(Creature* c, Unit* u)
 {
-    if(!u->isAlive() || !c->isAlive() || u->isInFlight())
+    if (!u->isAlive() || !c->isAlive() || c == u || u->isInFlight())
         return;
 
-    if(c->HasReactState(REACT_AGGRESSIVE) && !c->hasUnitState(UNIT_STAT_SIGHTLESS))
-        if(c->_IsWithinDist(u, c->m_SightDistance, true) && c->IsAIEnabled)
+    if (c->HasReactState(REACT_AGGRESSIVE) && !c->hasUnitState(UNIT_STAT_SIGHTLESS))
+        if (c->_IsWithinDist(u, c->m_SightDistance, true) && c->IsAIEnabled)
             c->AI()->MoveInLineOfSight(u);
 }
 
@@ -162,7 +162,7 @@ void CreatureRelocationNotifier::Visit(PlayerMapType &m)
     {
         Player * pl = iter->getSource();
 
-        if(!pl->m_seer->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+        if (!pl->m_seer->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
             pl->UpdateVisibilityOf(&i_creature);
 
         CreatureUnitRelocationWorker(&i_creature, pl);
@@ -171,7 +171,7 @@ void CreatureRelocationNotifier::Visit(PlayerMapType &m)
 
 void CreatureRelocationNotifier::Visit(CreatureMapType &m)
 {
-    if(!i_creature.isAlive())
+    if (!i_creature.isAlive())
         return;
 
     for(CreatureMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
@@ -179,7 +179,7 @@ void CreatureRelocationNotifier::Visit(CreatureMapType &m)
         Creature* c = iter->getSource();
         CreatureUnitRelocationWorker(&i_creature, c);
 
-        if(!c->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+        if (!c->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
             CreatureUnitRelocationWorker(c, &i_creature);
     }
 }
@@ -189,7 +189,7 @@ void DelayedUnitRelocation::Visit(CreatureMapType &m)
     for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
     {
         Creature * unit = iter->getSource();
-        if(!unit->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+        if (!unit->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
             continue;
 
         CreatureRelocationNotifier relocate(*unit);
@@ -209,10 +209,10 @@ void DelayedUnitRelocation::Visit(PlayerMapType &m)
         Player * player = iter->getSource();
         WorldObject const *viewPoint = player->m_seer;
 
-        if(!viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
+        if (!viewPoint->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
             continue;
 
-        if(player != viewPoint && !viewPoint->IsPositionValid())
+        if (player != viewPoint && !viewPoint->IsPositionValid())
             continue;
 
         CellPair pair2(Diamond::ComputeCellPair(viewPoint->GetPositionX(), viewPoint->GetPositionY()));
@@ -236,7 +236,7 @@ void AIRelocationNotifier::Visit(CreatureMapType &m)
     {
         Creature *c = iter->getSource();
         CreatureUnitRelocationWorker(c, &i_unit);
-        if(isCreature)
+        if (isCreature)
             CreatureUnitRelocationWorker((Creature*)&i_unit, c);
     }
 }

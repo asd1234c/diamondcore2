@@ -82,8 +82,8 @@ struct CreatureInfo
     char*   SubName;
     char*   IconName;
     uint32  GossipMenuId;
-    uint32  minlevel;
-    uint32  maxlevel;
+    uint8   minlevel;
+    uint8   maxlevel;
     uint32  expansion;
     uint32  faction_A;
     uint32  faction_H;
@@ -172,8 +172,6 @@ struct CreatureInfo
 // Defines base stats for creatures (used to calculate HP/mana/armor).
 struct CreatureBaseStats
 {
-    uint32 Level;
-    uint8 Class;
     uint32 BaseHealth[MAX_CREATURE_BASE_HP];
     uint32 BaseMana;
     uint32 BaseArmor;
@@ -199,10 +197,10 @@ struct CreatureBaseStats
         return uint32((BaseArmor * info->ModArmor) + 0.5f);
     }
 
-    static CreatureBaseStats const* GetBaseStats(uint32 level, uint8 unitClass);
+    static CreatureBaseStats const* GetBaseStats(uint8 level, uint8 unitClass);
 };
 
-typedef std::vector<CreatureBaseStats> CreatureBaseStatsList;
+typedef UNORDERED_MAP<uint16, CreatureBaseStats> CreatureBaseStatsMap;
 
 struct CreatureLocale
 {

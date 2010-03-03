@@ -140,7 +140,7 @@ typedef UNORDERED_MAP<uint32/*(mapid,spawnMode) pair*/,CellObjectGuidsMap> MapOb
 
 typedef UNORDERED_MAP<uint64/*(instance,guid) pair*/,time_t> RespawnTimes;
 
-// Trinity string ranges
+// Diamond string ranges
 #define MIN_DIAMOND_STRING_ID           1                    // 'diamond_string'
 #define MAX_DIAMOND_STRING_ID           2000000000
 #define MIN_DB_SCRIPT_STRING_ID        MAX_DIAMOND_STRING_ID // 'db_script_string'
@@ -690,7 +690,7 @@ class ObjectMgr
 
         void ReturnOrDeleteOldMails(bool serverUp);
 
-        CreatureBaseStats const* GetCreatureBaseStats(uint32 level, uint8 unitClass);
+        CreatureBaseStats const* GetCreatureBaseStats(uint8 level, uint8 unitClass);
 
         void SetHighestGuids();
         uint32 GenerateLowGuid(HighGuid guidhigh);
@@ -1061,7 +1061,7 @@ class ObjectMgr
 
         MailLevelRewardMap m_mailLevelRewardMap;
 
-        CreatureBaseStatsList m_creatureBaseStatsList;
+        CreatureBaseStatsMap m_creatureBaseStatsMap;
 
         typedef std::map<uint32,PetLevelInfo*> PetLevelInfoMap;
         // PetLevelInfoMap[creature_id][level]

@@ -776,6 +776,7 @@ enum DiamondStrings
     LANG_RESET_PET_TALENTS_ONLINE       = 1127,
     LANG_TAXINODE_ENTRY_LIST_CHAT       = 1128,
     LANG_TAXINODE_ENTRY_LIST_CONSOLE    = 1129,
+	LANG_PINFO_ALL_CHAR_COUNT			= 1130,
     // Room for more level 3              1130-1199 not used
 
     // Debug commands
@@ -853,7 +854,7 @@ enum DiamondStrings
     LANG_COMMAND_TICKETLISTADDCOMMENT   = 2024,
     LANG_COMMAND_TICKETLISTAGECREATE    = 2025,
 
-    // Trinity strings                    5000-9999
+    // Diamond strings                    5000-9999
     LANG_COMMAND_FREEZE                 = 5000,
     LANG_COMMAND_FREEZE_ERROR           = 5001,
     LANG_COMMAND_FREEZE_WRONG           = 5002,

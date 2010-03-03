@@ -3690,7 +3690,7 @@ void Map::ScriptsProcess()
 
             case SCRIPT_COMMAND_ORIENTATION:
             {
-                if(!source)
+                if (!source)
                 {
                     sLog.outError("SCRIPT_COMMAND_ORIENTATION call for NULL creature.");
                     break;
