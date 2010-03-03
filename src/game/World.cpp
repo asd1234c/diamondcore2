@@ -439,9 +439,14 @@ void World::LoadConfigSettings(bool reload)
         }
     }
 
+	m_configs[CONFIG_ENABLE_ANNOUNCE_SOUND] = sConfig.GetIntDefault("AnnounceSound.Enable", 0);
+	m_configs[CONFIG_ANNOUNCE_SOUND_ID] = sConfig.GetIntDefault("AnnounceSound.Id", 0);
+	if (!sSoundEntriesStore.LookupEntry(m_configs[CONFIG_ANNOUNCE_SOUND_ID]))
+		sLog.outError("Not exist SoundId (%i) was entered.", m_configs[CONFIG_ANNOUNCE_SOUND_ID]);
+
     ///- Read the player limit and the Message of the day from the config file
     SetPlayerLimit(sConfig.GetIntDefault("PlayerLimit", DEFAULT_PLAYER_LIMIT), true);
-    SetMotd(sConfig.GetStringDefault("Motd", "Welcome to a Trinity Core Server."));
+    SetMotd(sConfig.GetStringDefault("Motd", "Welcome to DiamondCore Server."));
 
     ///- Get string for new logins (newly created characters)
     SetNewCharString(sConfig.GetStringDefault("PlayerStart.String", ""));

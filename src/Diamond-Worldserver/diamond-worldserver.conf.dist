@@ -78,6 +78,21 @@ Locale = 0
 EAIErrorLevel = 2
 
 ###############################################################################
+# SOUND ANNOUNCE SYSTEM SETTINGS
+#
+#    AnnounceSound.Enable
+#	 Default: 0 - Disabled
+#	 	  1 - Enabled
+#
+#    AnnounceSound.Id
+#	 Default: 0 - No Sound
+#
+###############################################################################
+
+AnnounceSound.Enable	= 0
+AnnounceSound.Id	= 0
+
+###############################################################################
 # PERFORMANCE SETINGS
 #
 #    UseProcessors

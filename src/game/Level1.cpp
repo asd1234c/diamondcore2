@@ -166,8 +166,24 @@ bool ChatHandler::HandleAnnounceCommand(const char* args)
     if (!*args)
         return false;
 
-    sWorld.SendWorldText(LANG_SYSTEMMESSAGE,args);
-    return true;
+	uint32 soundId = CONFIG_ANNOUNCE_SOUND_ID;
+
+	if (CONFIG_ANNOUNCE_SOUND_ID == 1)
+	{
+		sWorld.SendWorldText(LANG_SYSTEMMESSAGE, args);
+		WorldPacket data(SMSG_PLAY_SOUND, 4);
+		data << uint32(soundId) << m_session->GetPlayer()->GetGUID();
+		sWorld.SendGlobalMessage(&data);
+		PSendSysMessage(LANG_COMMAND_PLAYED_TO_ALL, soundId);
+
+		return true;
+	}
+	else
+	{
+		sWorld.SendWorldText(LANG_SYSTEMMESSAGE, args);
+
+		return true;
+	}
 }
 
 // announce to logged in GMs
