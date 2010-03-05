@@ -687,7 +687,7 @@ struct npc_dkc1_gothikAI : public ScriptedAI
     {
         ScriptedAI::MoveInLineOfSight(who);
 
-        if (who->GetEntry() == GHOULS && me->IsWithinDistInMap(who, 0.0f))
+        if (who->GetEntry() == GHOULS && me->IsWithinDistInMap(who, 20.0f))
         {
             if (Unit *owner = who->GetOwner())
             {
