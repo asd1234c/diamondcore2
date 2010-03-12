@@ -280,9 +280,9 @@ bool AchievementCriteriaData::Meets(uint32 criteria_id, Player const* source, Un
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE:
             if (!target || target->GetTypeId() != TYPEID_PLAYER)
                 return false;
-            if (classRace.class_id && classRace.class_id != ((Player*)target)->getClass())
+            if (classRace.class_id && classRace.class_id != target->ToPlayer()->getClass())
                 return false;
-            if (classRace.race_id && classRace.race_id != ((Player*)target)->getRace())
+            if (classRace.race_id && classRace.race_id != target->ToPlayer()->getRace())
                 return false;
             return true;
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_LESS_HEALTH:
@@ -290,10 +290,10 @@ bool AchievementCriteriaData::Meets(uint32 criteria_id, Player const* source, Un
                 return false;
             return target->GetHealth()*100 <= health.percent*target->GetMaxHealth();
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD:
-            if (!target || target->GetTypeId() != TYPEID_PLAYER || target->isAlive() || ((Player*)target)->GetDeathTimer() == 0)
+            if (!target || target->GetTypeId() != TYPEID_PLAYER || target->isAlive() || target->ToPlayer()->GetDeathTimer() == 0)
                 return false;
             // flag set == must be same team, not set == different team
-            return (((Player*)target)->GetTeam() == source->GetTeam()) == (player_dead.own_team_flag != 0);
+            return (target->ToPlayer()->GetTeam() == source->GetTeam()) == (player_dead.own_team_flag != 0);
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA:
             return source->HasAuraEffect(aura.spell_id, aura.effect_idx);
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA:
@@ -323,7 +323,7 @@ bool AchievementCriteriaData::Meets(uint32 criteria_id, Player const* source, Un
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM:
             if (!target || target->GetTypeId() != TYPEID_PLAYER)
                 return false;
-            return ((Player*)target)->GetTeam() == team.team;
+            return target->ToPlayer()->GetTeam() == team.team;
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK:
             return Player::GetDrunkenstateByValue(source->GetDrunkValue()) >= drunk.state;
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY:
@@ -717,8 +717,8 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
         if (!achievement)
             continue;
 
-        if ((achievement->factionFlag == ACHIEVEMENT_FACTION_FLAG_HORDE    && GetPlayer()->GetTeam() != HORDE) ||
-            (achievement->factionFlag == ACHIEVEMENT_FACTION_FLAG_ALLIANCE && GetPlayer()->GetTeam() != ALLIANCE))
+        if ((achievement->factionFlag == ACHIEVEMENT_FACTION_HORDE    && GetPlayer()->GetTeam() != HORDE) ||
+            (achievement->factionFlag == ACHIEVEMENT_FACTION_ALLIANCE && GetPlayer()->GetTeam() != ALLIANCE))
             continue;
 
         // don't update already completed criteria
@@ -2147,7 +2147,8 @@ void AchievementGlobalMgr::LoadRewards()
     {
         Field *fields = result->Fetch();
         uint32 entry = fields[0].GetUInt32();
-        if (!sAchievementStore.LookupEntry(entry))
+        const AchievementEntry* pAchievement = sAchievementStore.LookupEntry(entry);
+        if (!pAchievement)
         {
             sLog.outErrorDb( "Table `achievement_reward` has wrong achievement (Entry: %u), ignore", entry);
             continue;
@@ -2161,15 +2162,15 @@ void AchievementGlobalMgr::LoadRewards()
         reward.subject    = fields[5].GetCppString();
         reward.text       = fields[6].GetCppString();
 
-        if ((reward.titleId[0] == 0) != (reward.titleId[1] == 0))
-            sLog.outErrorDb( "Table `achievement_reward` (Entry: %u) has title (A: %u H: %u) only for one from teams.", entry, reward.titleId[0], reward.titleId[1]);
-
         // must be title or mail at least
         if (!reward.titleId[0] && !reward.titleId[1] && !reward.sender)
         {
             sLog.outErrorDb( "Table `achievement_reward` (Entry: %u) not have title or item reward data, ignore.", entry);
             continue;
         }
+
+        if (pAchievement->factionFlag == ACHIEVEMENT_FACTION_ANY && ((reward.titleId[0] == 0) != (reward.titleId[1] == 0)))
+            sLog.outErrorDb( "Table `achievement_reward` (Entry: %u) has title (A: %u H: %u) only for one from teams.", entry, reward.titleId[0], reward.titleId[1]);
 
         if (reward.titleId[0])
         {
@@ -2186,7 +2187,7 @@ void AchievementGlobalMgr::LoadRewards()
             CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(reward.titleId[1]);
             if (!titleEntry)
             {
-                sLog.outErrorDb( "Table `achievement_reward` (Entry: %u) has invalid title id (%u) in `title_A`, set to 0", entry, reward.titleId[1]);
+                sLog.outErrorDb( "Table `achievement_reward` (Entry: %u) has invalid title id (%u) in `title_H`, set to 0", entry, reward.titleId[1]);
                 reward.titleId[1] = 0;
             }
         }

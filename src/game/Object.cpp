@@ -295,11 +295,9 @@ void Object::_BuildMovementUpdate(ByteBuffer * data, uint16 flags) const
         *data << ((Unit*)this)->GetSpeed( MOVE_PITCH_RATE );
 
         // 0x08000000
-        if (GetTypeId() == TYPEID_PLAYER && ((Player*)this)->isInFlight())
+        if (GetTypeId() == TYPEID_PLAYER && this->ToPlayer()->isInFlight())
         {
-            WPAssert(((Player*)this)->GetMotionMaster()->GetCurrentMovementGeneratorType() == FLIGHT_MOTION_TYPE);
-
-            FlightPathMovementGenerator *fmg = (FlightPathMovementGenerator*)(((Player*)this)->GetMotionMaster()->top());
+            FlightPathMovementGenerator *fmg = (FlightPathMovementGenerator*)(const_cast<Player*>(this->ToPlayer())->GetMotionMaster()->top());
 
             uint32 flags3 = MOVEFLAG_GLIDE;
 
@@ -327,7 +325,7 @@ void Object::_BuildMovementUpdate(ByteBuffer * data, uint16 flags) const
             Path &path = fmg->GetPath();
 
             float x, y, z;
-            ((Player*)this)->GetPosition(x, y, z);
+            this->ToPlayer()->GetPosition(x, y, z);
 
             uint32 inflighttime = uint32(path.GetPassedLength(fmg->GetCurrentNode(), x, y, z) * 32);
             uint32 traveltime = uint32(path.GetTotalLength() * 32);
@@ -416,7 +414,7 @@ void Object::_BuildMovementUpdate(ByteBuffer * data, uint16 flags) const
                 break;
             case TYPEID_UNIT:
             {
-                if (((Creature*)this)->canFly())
+                if (this->ToCreature()->canFly())
                     flags |= MOVEMENTFLAG_LEVITATING;
 
                 *data << uint32(0x0000000B);                // unk, can be 0xB or 0xC
@@ -535,12 +533,12 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
 
                     if (GetTypeId() == TYPEID_UNIT)
                     {
-                        if (!target->canSeeSpellClickOn((Creature*)this))
+                        if (!target->canSeeSpellClickOn(this->ToCreature()))
                             appendValue &= ~UNIT_NPC_FLAG_SPELLCLICK;
 
                         if (appendValue & UNIT_NPC_FLAG_TRAINER)
                         {
-                            if (!((Creature*)this)->isCanTrainingOf(target, false))
+                            if (!this->ToCreature()->isCanTrainingOf(target, false))
                                 appendValue &= ~(UNIT_NPC_FLAG_TRAINER | UNIT_NPC_FLAG_TRAINER_CLASS | UNIT_NPC_FLAG_TRAINER_PROFESSION);
                         }
                     }
@@ -579,7 +577,7 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
                 {
                     if (GetTypeId() == TYPEID_UNIT)
                     {
-                        const CreatureInfo* cinfo = ((Creature*)this)->GetCreatureInfo();
+                        const CreatureInfo* cinfo = this->ToCreature()->GetCreatureInfo();
                         if (cinfo->flags_extra & CREATURE_FLAG_EXTRA_TRIGGER)
                         {
                             if (target->isGameMaster())
@@ -608,7 +606,7 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
                 {
                     if (GetTypeId() == TYPEID_UNIT)
                     {
-                        if (!target->isAllowedToLoot((Creature*)this))
+                        if (!target->isAllowedToLoot(const_cast<Creature*>(this->ToCreature())))
                             *data << (m_uint32Values[ index ] & ~UNIT_DYNFLAG_LOOTABLE);
                         else
                             *data << (m_uint32Values[ index ] & ~UNIT_DYNFLAG_TAPPED);
@@ -629,14 +627,12 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
                             if (index == UNIT_FIELD_BYTES_2)
                             {
                                 // Allow targetting opposite faction in party when enabled in config
-                                DEBUG_LOG("-- VALUES_UPDATE: Sending '%s' the blue-group-fix from '%s' (flag)", target->GetName(), ((Player*)this)->GetName());
                                 *data << ( m_uint32Values[ index ] & ((UNIT_BYTE2_FLAG_SANCTUARY /*| UNIT_BYTE2_FLAG_AURAS | UNIT_BYTE2_FLAG_UNK5*/) << 8) ); // this flag is at uint8 offset 1 !!
                             }
                             else
                             {
                                 // pretend that all other HOSTILE players have own faction, to allow follow, heal, rezz (trade wont work)
                                 uint32 faction = target->getFaction();
-                                DEBUG_LOG("-- VALUES_UPDATE: Sending '%s' the blue-group-fix from '%s' (faction %u)", target->GetName(), ((Player*)this)->GetName(), faction);
                                 *data << uint32(faction);
                             }
                         }
@@ -1147,14 +1143,14 @@ void WorldObject::setActive( bool on )
     if (on)
     {
         if (GetTypeId() == TYPEID_UNIT)
-            map->AddToActive((Creature*)this);
+            map->AddToActive(this->ToCreature());
         else if (GetTypeId() == TYPEID_DYNAMICOBJECT)
             map->AddToActive((DynamicObject*)this);
     }
     else
     {
         if (GetTypeId() == TYPEID_UNIT)
-            map->RemoveFromActive((Creature*)this);
+            map->RemoveFromActive(this->ToCreature());
         else if (GetTypeId() == TYPEID_DYNAMICOBJECT)
             map->RemoveFromActive((DynamicObject*)this);
     }
@@ -1487,7 +1483,7 @@ void WorldObject::SendPlaySound(uint32 Sound, bool OnlySelf)
     WorldPacket data(SMSG_PLAY_SOUND, 4);
     data << Sound;
     if (OnlySelf && GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->GetSession()->SendPacket( &data );
+        this->ToPlayer()->GetSession()->SendPacket( &data );
     else
         SendMessageToSet( &data, true ); // ToSelf ignored in this case
 }
@@ -1735,7 +1731,7 @@ TempSummon *Map::SummonCreature(uint32 entry, const Position &pos, SummonPropert
     {
         phase = summoner->GetPhaseMask();
         if (summoner->GetTypeId() == TYPEID_PLAYER)
-            team = ((Player*)summoner)->GetTeam();
+            team = summoner->ToPlayer()->GetTeam();
     }
 
     TempSummon *summon = NULL;
@@ -1758,7 +1754,7 @@ TempSummon *Map::SummonCreature(uint32 entry, const Position &pos, SummonPropert
     summon->SetHomePosition(pos);
 
     summon->InitStats(duration);
-    Add((Creature*)summon);
+    Add(summon->ToCreature());
     summon->InitSummon();
 
     //ObjectAccessor::UpdateObjectVisibility(summon);
@@ -1864,7 +1860,7 @@ Pet* Player::SummonPet(uint32 entry, float x, float y, float z, float ang, PetTy
             break;
     }
 
-    map->Add((Creature*)pet);
+    map->Add(pet->ToCreature());
 
     switch (petType)
     {

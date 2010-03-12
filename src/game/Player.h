@@ -1244,6 +1244,12 @@ class Player : public Unit, public GridObject<Player>
         Player* GetTrader() const { return pTrader; }
         void ClearTrade();
         void TradeCancel(bool sendback);
+        Item *GetItemByTradeSlot(uint8 slot) const
+        {
+            if (slot < TRADE_SLOT_COUNT && tradeItems[slot])
+                return GetItemByGuid(tradeItems[slot]);
+            return NULL;
+        }
 
         void UpdateEnchantTime(uint32 time);
         void UpdateItemDuration(uint32 time, bool realtimeonly=false);
@@ -2309,6 +2315,7 @@ class Player : public Unit, public GridObject<Player>
         uint32 GetChampioningFaction() const { return m_ChampioningFaction; }
         void SetChampioningFaction(uint32 faction) { m_ChampioningFaction = faction; }
 Spell * m_spellModTakingSpell;
+
     protected:
         uint32 m_AreaID;
         uint32 m_regenTimerCount;

@@ -3353,8 +3353,8 @@ void ObjectMgr::LoadGroups()
     Group *group = NULL;
     uint64 leaderGuid = 0;
     uint32 count = 0;
-    //                                                     0         1              2           3           4              5      6      7      8      9      10     11     12     13      14         15              16
-    QueryResult_AutoPtr result = CharacterDatabase.Query("SELECT mainTank, mainAssistant, lootMethod, looterGuid, lootThreshold, icon1, icon2, icon3, icon4, icon5, icon6, icon7, icon8, isRaid, difficulty, raiddifficulty, leaderGuid FROM groups");
+    //                                                           0           1           2              3      4      5      6      7      8      9      10     11      12          13              14
+    QueryResult_AutoPtr result = CharacterDatabase.Query("SELECT lootMethod, looterGuid, lootThreshold, icon1, icon2, icon3, icon4, icon5, icon6, icon7, icon8, isRaid, difficulty, raiddifficulty, leaderGuid FROM groups");
 
     if ( !result )
     {
@@ -3374,7 +3374,7 @@ void ObjectMgr::LoadGroups()
          
         Field *fields = result->Fetch();
         ++count;
-        leaderGuid = MAKE_NEW_GUID(fields[16].GetUInt32(),0,HIGHGUID_PLAYER);
+        leaderGuid = MAKE_NEW_GUID(fields[14].GetUInt32(),0,HIGHGUID_PLAYER);
 
         group = new Group;
         if (!group->LoadGroupFromDB(leaderGuid, result, false))
@@ -3393,8 +3393,8 @@ void ObjectMgr::LoadGroups()
     count = 0;
     group = NULL;
     leaderGuid = 0;
-    //                                        0           1          2         3
-    result = CharacterDatabase.Query("SELECT memberGuid, assistant, subgroup, leaderGuid FROM group_member ORDER BY leaderGuid");
+    //                                            2          3         4           1                                     1
+    result = CharacterDatabase.Query("SELECT memberGuid, memberFlags, subgroup, leaderGuid FROM group_member ORDER BY leaderGuid");
     if (!result)
     {
         //barGoLink bar2( 1 );
@@ -3420,7 +3420,7 @@ void ObjectMgr::LoadGroups()
                 }
             }
 
-            if (!group->LoadMemberFromDB(fields[0].GetUInt32(), fields[2].GetUInt8(), fields[1].GetBool()))
+            if (!group->LoadMemberFromDB(fields[0].GetUInt32(), fields[1].GetUInt8(), fields[2].GetUInt8()))
             {
                 sLog.outErrorDb("Incorrect entry in group_member table : member %d cannot be added to player %d's group!", fields[0].GetUInt32(), fields[3].GetUInt32());
                 CharacterDatabase.PExecute("DELETE FROM group_member WHERE memberGuid = '%d'", fields[0].GetUInt32());
@@ -8992,9 +8992,10 @@ void ObjectMgr::LoadCreatureClassLevelStats()
         if (!info)
             continue;
 
-        if (m_creatureBaseStatsMap.find( MAKE_PAIR16(info->maxlevel, info->unit_class) ) == m_creatureBaseStatsMap.end())
+        for(uint16 lvl = info->minlevel; lvl <= info->maxlevel; ++lvl)
         {
-            sLog.outErrorDb("Missing base stats for creature class %u maxlevel %u", info->unit_class, info->maxlevel);
+            if (m_creatureBaseStatsMap.find( MAKE_PAIR16(lvl, info->unit_class) ) == m_creatureBaseStatsMap.end())
+                sLog.outErrorDb("Missing base stats for creature class %u level %u", info->unit_class, lvl);
         }
     }
 

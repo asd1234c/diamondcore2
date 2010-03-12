@@ -56,6 +56,7 @@ void SqlTransaction::Execute(Database *db)
 
         free((void*)const_cast<char*>(sql));
     }
+
     db->DirectExecute("COMMIT");
 }
 
@@ -196,4 +197,3 @@ void SqlQueryHolderEx::Execute(Database *db)
     /// sync with the caller thread
     m_queue->add(m_callback);
 }
-

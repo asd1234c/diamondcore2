@@ -895,7 +895,7 @@ DROP TABLE IF EXISTS `group_member`;
 CREATE TABLE `group_member` (
   `leaderGuid` int(11) unsigned NOT NULL,
   `memberGuid` int(11) unsigned NOT NULL,
-  `assistant` tinyint(1) unsigned NOT NULL,
+  `memberFlags` tinyint(2) unsigned NOT NULL,
   `subgroup` smallint(6) unsigned NOT NULL,
   PRIMARY KEY (`leaderGuid`,`memberGuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Groups';
@@ -911,8 +911,6 @@ DROP TABLE IF EXISTS `groups`;
 CREATE TABLE `groups` (
   `groupId` int(11) unsigned NOT NULL,
   `leaderGuid` int(11) unsigned NOT NULL,
-  `mainTank` int(11) unsigned NOT NULL,
-  `mainAssistant` int(11) unsigned NOT NULL,
   `lootMethod` tinyint(4) unsigned NOT NULL,
   `looterGuid` int(11) unsigned NOT NULL,
   `lootThreshold` tinyint(4) unsigned NOT NULL,

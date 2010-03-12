@@ -40,7 +40,7 @@ void AddItemsSetItem(Player*player,Item *item)
         return;
     }
 
-    if ( set->required_skill_id && player->GetSkillValue(set->required_skill_id) < set->required_skill_value )
+    if (set->required_skill_id && player->GetSkillValue(set->required_skill_id) < set->required_skill_value)
         return;
 
     ItemSetEffect *eff = NULL;
@@ -301,19 +301,18 @@ void Item::SaveToDB()
     {
         case ITEM_NEW:
         {
-            CharacterDatabase.PExecute( "DELETE FROM item_instance WHERE guid = '%u'", guid );
             std::ostringstream ss;
-            ss << "INSERT INTO item_instance (guid,owner_guid,data) VALUES (" << guid << "," << GUID_LOPART(GetOwnerGUID()) << ",'";
-            for (uint16 i = 0; i < m_valuesCount; ++i )
+            ss << "REPLACE INTO item_instance (guid,owner_guid,data) VALUES (" << guid << "," << GUID_LOPART(GetOwnerGUID()) << ",'";
+            for (uint16 i = 0; i < m_valuesCount; ++i)
                 ss << GetUInt32Value(i) << " ";
             ss << "' )";
-            CharacterDatabase.Execute( ss.str().c_str() );
-        } break;
+            CharacterDatabase.Execute(ss.str().c_str());
+        }break;
         case ITEM_CHANGED:
         {
             std::ostringstream ss;
             ss << "UPDATE item_instance SET data = '";
-            for (uint16 i = 0; i < m_valuesCount; ++i )
+            for (uint16 i = 0; i < m_valuesCount; ++i)
                 ss << GetUInt32Value(i) << " ";
             ss << "', owner_guid = '" << GUID_LOPART(GetOwnerGUID()) << "' WHERE guid = '" << guid << "'";
 
@@ -321,10 +320,10 @@ void Item::SaveToDB()
 
             if (HasFlag(ITEM_FIELD_FLAGS, ITEM_FLAGS_WRAPPED))
                 CharacterDatabase.PExecute("UPDATE character_gifts SET guid = '%u' WHERE item_guid = '%u'", GUID_LOPART(GetOwnerGUID()),GetGUIDLow());
-        } break;
+        }break;
         case ITEM_REMOVED:
         {
-            if (GetUInt32Value(ITEM_FIELD_ITEM_TEXT_ID) > 0 )
+            if (GetUInt32Value(ITEM_FIELD_ITEM_TEXT_ID) > 0)
                 CharacterDatabase.PExecute("DELETE FROM item_text WHERE id = '%u'", GetUInt32Value(ITEM_FIELD_ITEM_TEXT_ID));
             CharacterDatabase.PExecute("DELETE FROM item_instance WHERE guid = '%u'", guid);
             if (HasFlag(ITEM_FIELD_FLAGS, ITEM_FLAGS_WRAPPED))
@@ -417,11 +416,11 @@ bool Item::LoadFromDB(uint32 guid, uint64 owner_guid, QueryResult_AutoPtr result
     {
         std::ostringstream ss;
         ss << "UPDATE item_instance SET data = '";
-        for (uint16 i = 0; i < m_valuesCount; ++i )
+        for (uint16 i = 0; i < m_valuesCount; ++i)
             ss << GetUInt32Value(i) << " ";
         ss << "', owner_guid = '" << GUID_LOPART(GetOwnerGUID()) << "' WHERE guid = '" << guid << "'";
 
-        CharacterDatabase.Execute( ss.str().c_str() );
+        CharacterDatabase.Execute(ss.str().c_str());
     }
 
     return true;
@@ -468,13 +467,13 @@ uint32 Item::GetSkill()
     switch (proto->Class)
     {
         case ITEM_CLASS_WEAPON:
-            if ( proto->SubClass >= MAX_ITEM_SUBCLASS_WEAPON )
+            if (proto->SubClass >= MAX_ITEM_SUBCLASS_WEAPON)
                 return 0;
             else
                 return item_weapon_skills[proto->SubClass];
 
         case ITEM_CLASS_ARMOR:
-            if ( proto->SubClass >= MAX_ITEM_SUBCLASS_ARMOR )
+            if (proto->SubClass >= MAX_ITEM_SUBCLASS_ARMOR)
                 return 0;
             else
                 return item_armor_skills[proto->SubClass];
@@ -594,7 +593,7 @@ void Item::SetItemRandomProperties(int32 randomPropId)
         ItemRandomSuffixEntry const *item_rand = sItemRandomSuffixStore.LookupEntry(-randomPropId);
         if (item_rand)
         {
-            if ( GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID) != -int32(item_rand->ID) ||
+            if (GetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID) != -int32(item_rand->ID) ||
                 !GetItemSuffixFactor())
             {
                 SetInt32Value(ITEM_FIELD_RANDOM_PROPERTIES_ID,-int32(item_rand->ID));
@@ -709,12 +708,12 @@ bool Item::CanBeTraded(bool mail) const
     if ((!mail || !IsBoundAccountWide()) && IsSoulBound())
         return false;
 
-    if (IsBag() && (Player::IsBagPos(GetPos()) || !((Bag const*)this)->IsEmpty()) )
+    if (IsBag() && (Player::IsBagPos(GetPos()) || !((Bag const*)this)->IsEmpty()))
         return false;
 
     if (Player* owner = GetOwner())
     {
-        if (owner->CanUnequipItem(GetPos(),false) !=  EQUIP_ERR_OK )
+        if (owner->CanUnequipItem(GetPos(),false) !=  EQUIP_ERR_OK)
             return false;
         if (owner->GetLootGUID()==GetGUID())
             return false;
@@ -778,7 +777,7 @@ bool Item::IsFitToSpellRequirements(SpellEntry const* spellInfo) const
     if (spellInfo->EquippedItemClass != -1)                 // -1 == any item class
     {
         // Special case - accept vellum for armor/weapon requirements
-        if ( (spellInfo->EquippedItemClass==ITEM_CLASS_ARMOR && proto->IsArmorVellum())
+        if ((spellInfo->EquippedItemClass==ITEM_CLASS_ARMOR && proto->IsArmorVellum())
             ||( spellInfo->EquippedItemClass==ITEM_CLASS_WEAPON && proto->IsWeaponVellum()))
             if (spellmgr.IsSkillTypeSpell(spellInfo->Id, SKILL_ENCHANTING)) // only for enchanting spells
                 return true;
@@ -949,7 +948,7 @@ uint8 Item::GetGemCountWithLimitCategory(uint32 limitCategory) const
 bool Item::IsLimitedToAnotherMapOrZone( uint32 cur_mapId, uint32 cur_zoneId) const
 {
     ItemPrototype const* proto = GetProto();
-    return proto && (proto->Map && proto->Map != cur_mapId || proto->Area && proto->Area != cur_zoneId );
+    return proto && (proto->Map && proto->Map != cur_mapId || proto->Area && proto->Area != cur_zoneId);
 }
 
 // Though the client has the information in the item's data field,

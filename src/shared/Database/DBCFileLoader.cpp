@@ -220,6 +220,7 @@ char* DBCFileLoader::AutoProduceData(const char* format, uint32& records, char**
             }
         }
     }
+
     sqlDataTable = dataTable + offset;
 
     return dataTable;

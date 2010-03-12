@@ -30,7 +30,6 @@
 
 Database::~Database()
 {
-    /*Delete objects*/
 }
 
 bool Database::Initialize(const char *)

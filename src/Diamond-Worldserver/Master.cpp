@@ -20,10 +20,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/** \file
-    \ingroup Trinityd
-*/
-
 #include <ace/OS_NS_signal.h>
 
 #include "Common.h"
@@ -67,7 +63,7 @@ volatile uint32 Master::m_masterLoopCounter = 0;
 class FreezeDetectorRunnable : public ACE_Based::Runnable
 {
 public:
-    FreezeDetectorRunnable() { _delaytime = 0; }
+	FreezeDetectorRunnable() { _delaytime = 0; }
     uint32 m_loops, m_lastchange;
     uint32 w_loops, w_lastchange;
     uint32 _delaytime;
@@ -81,26 +77,10 @@ public:
         w_loops = 0;
         m_lastchange = 0;
         w_lastchange = 0;
-        while(!World::IsStopped())
+        while (!World::IsStopped())
         {
             ACE_Based::Thread::Sleep(1000);
             uint32 curtime = getMSTime();
-            //DEBUG_LOG("anti-freeze: time=%u, counters=[%u; %u]",curtime,Master::m_masterLoopCounter,World::m_worldLoopCounter);
-
-            // There is no Master anymore
-            // TODO: clear the rest of the code
-//            // normal work
-//            if (m_loops != Master::m_masterLoopCounter)
-//            {
-//                m_lastchange = curtime;
-//                m_loops = Master::m_masterLoopCounter;
-//            }
-//            // possible freeze
-//            else if (getMSTimeDiff(m_lastchange,curtime) > _delaytime)
-//            {
-//                sLog.outError("Main/Sockets Thread hangs, kicking out server!");
-//                *((uint32 volatile*)NULL) = 0;                       // bang crash
-//            }
 
             // normal work
             if (w_loops != World::m_worldLoopCounter)
@@ -158,9 +138,9 @@ public:
             std::string stringip = sConfig.GetStringDefault ("Ra.IP", "0.0.0.0");
             ipaddr_t raip;
             if (!Utility::u2ip (stringip, raip))
-                sLog.outError ("MaNGOS RA can not bind to ip %s", stringip.c_str ());
+                sLog.outError ("Diamond RA can not bind to ip %s", stringip.c_str ());
             else if (RAListenSocket.Bind (raip, raport))
-                sLog.outError ("MaNGOS RA can not bind to port %d on %s", raport, stringip.c_str ());
+				sLog.outError ("Diamond RA can not bind to port %d on %s", raport, stringip.c_str ());
             else
             {
                 h.Add (&RAListenSocket);

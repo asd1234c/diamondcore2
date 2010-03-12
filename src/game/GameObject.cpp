@@ -61,6 +61,9 @@ GameObject::GameObject() : WorldObject(), m_goValue(new GameObjectValue)
     m_DBTableGuid = 0;
     m_rotation = 0;
 
+    m_groupLootTimer = 0;
+    lootingGroupLeaderGUID = 0;
+
     ResetLootMode(); // restore default loot mode
 }
 
@@ -210,7 +213,7 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMa
     return true;
 }
 
-void GameObject::Update(uint32 /*p_time*/)
+void GameObject::Update(uint32 diff)
 {
     if (IS_MO_TRANSPORT(GetGUID()))
     {
@@ -253,9 +256,9 @@ void GameObject::Update(uint32 /*p_time*/)
 
                             UpdateData udata;
                             WorldPacket packet;
-                            BuildValuesUpdateBlockForPlayer(&udata,((Player*)caster));
+                            BuildValuesUpdateBlockForPlayer(&udata,caster->ToPlayer());
                             udata.BuildPacket(&packet);
-                            ((Player*)caster)->GetSession()->SendPacket(&packet);
+                            caster->ToPlayer()->GetSession()->SendPacket(&packet);
 
                             SendCustomAnim();
                         }
@@ -290,7 +293,7 @@ void GameObject::Update(uint32 /*p_time*/)
                                 caster->FinishSpell(CURRENT_CHANNELED_SPELL);
 
                                 WorldPacket data(SMSG_FISH_ESCAPED,0);
-                                ((Player*)caster)->GetSession()->SendPacket(&data);
+                                caster->ToPlayer()->GetSession()->SendPacket(&data);
                             }
                             // can be delete
                             m_lootState = GO_JUST_DEACTIVATED;
@@ -396,8 +399,8 @@ void GameObject::Update(uint32 /*p_time*/)
                         if (IsBattleGroundTrap && ok->GetTypeId() == TYPEID_PLAYER)
                         {
                             //BattleGround gameobjects case
-                            if (((Player*)ok)->InBattleGround())
-                                if (BattleGround *bg = ((Player*)ok)->GetBattleGround())
+                            if (ok->ToPlayer()->InBattleGround())
+                                if (BattleGround *bg = ok->ToPlayer()->GetBattleGround())
                                     bg->HandleTriggerBuff(GetGUID());
                         }
                     }
@@ -432,6 +435,19 @@ void GameObject::Update(uint32 /*p_time*/)
                         m_cooldownTime = 0;
                     }
                     break;
+                case GAMEOBJECT_TYPE_CHEST:
+                    if (m_groupLootTimer)
+                    {
+                        if (m_groupLootTimer <= diff)
+                        {
+                            Group* group = sObjectMgr.GetGroupByLeader(lootingGroupLeaderGUID);
+                            if (group)
+                                group->EndRoll(&loot);
+                            m_groupLootTimer = 0;
+                            lootingGroupLeaderGUID = 0;
+                        }
+                        else m_groupLootTimer -= diff;
+                    }
                 default:
                     break;
             }
@@ -1111,7 +1127,7 @@ void GameObject::Use(Unit* user)
                     data << GetGUID();
                     player->GetSession()->SendPacket(&data);
                 }
-                else if (info->questgiver.gossipID)
+                else if (info->goober.gossipID)
                 {
                     player->PrepareGossipMenu(this, info->goober.gossipID);
                     player->SendPreparedGossip(this);
@@ -1271,7 +1287,7 @@ void GameObject::Use(Unit* user)
                 return;
 
             // accept only use by player from same group for caster except caster itself
-            if (((Player*)caster)==player || !((Player*)caster)->IsInSameRaidWith(player))
+            if (caster->ToPlayer()==player || !caster->ToPlayer()->IsInSameRaidWith(player))
                 return;
 
             AddUniqueUse(player);
@@ -1318,7 +1334,7 @@ void GameObject::Use(Unit* user)
                 if ( !caster || caster->GetTypeId() != TYPEID_PLAYER )
                     return;
 
-                if (user->GetTypeId() != TYPEID_PLAYER || !((Player*)user)->IsInSameRaidWith((Player*)caster))
+                if (user->GetTypeId() != TYPEID_PLAYER || !user->ToPlayer()->IsInSameRaidWith(caster->ToPlayer()))
                     return;
             }
 

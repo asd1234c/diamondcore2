@@ -4514,7 +4514,7 @@ bool ChatHandler::HandleNpcChangeEntryCommand(const char *args)
         SetSentErrorMessage(true);
         return false;
     }
-    Creature* creature = (Creature*)unit;
+    Creature* creature = unit->ToCreature();
     if (creature->UpdateEntry(newEntryNum))
         SendSysMessage(LANG_DONE);
     else
@@ -5254,15 +5254,15 @@ bool ChatHandler::HandleResetTalentsCommand(const char * args)
         if (!*args && creature && creature->isPet())
         {
             Unit *owner = creature->GetOwner();
-            if (owner && owner->GetTypeId() == TYPEID_PLAYER && ((Pet *)creature)->IsPermanentPetFor((Player*)owner))
+            if (owner && owner->GetTypeId() == TYPEID_PLAYER && ((Pet *)creature)->IsPermanentPetFor(owner->ToPlayer()))
             {
                 ((Pet *)creature)->resetTalents(true);
-                ((Player*)owner)->SendTalentsInfoData(true);
+                owner->ToPlayer()->SendTalentsInfoData(true);
 
-                ChatHandler((Player*)owner).SendSysMessage(LANG_RESET_PET_TALENTS);
-                if (!m_session || m_session->GetPlayer()!=((Player*)owner))
-                    PSendSysMessage(LANG_RESET_PET_TALENTS_ONLINE,GetNameLink((Player*)owner).c_str());
-            }
+                ChatHandler(owner->ToPlayer()).SendSysMessage(LANG_RESET_PET_TALENTS);
+                if (!m_session || m_session->GetPlayer() != owner->ToPlayer())
+					PSendSysMessage(LANG_RESET_PET_TALENTS_ONLINE,GetNameLink(owner->ToPlayer()).c_str());
+			}
             return true;
         }
 
@@ -6152,7 +6152,7 @@ bool ChatHandler::HandleRespawnCommand(const char* /*args*/)
         }
 
         if (target->isDead())
-            ((Creature*)target)->Respawn();
+            target->ToCreature()->Respawn();
         return true;
     }
 

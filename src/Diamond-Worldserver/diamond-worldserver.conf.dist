@@ -1169,8 +1169,16 @@ ListenRange.Yell = 300
 #        Default: 0 (join announcement in normal way)
 #                 1 (GM join without announcement)
 #
-#    ChannelLevelReq
+#    ChatLevelReq.Channel
 #        The required level of character to be able to write in chat channels
+#        Default: 1 (From level 1)
+#
+#    ChatLevelReq.Whisper
+#        The required level of character to be able to whisper
+#        Default: 1 (From level 1)
+#
+#    ChatLevelReq.Say
+#        The required level of character to be able to say/yell/emote
 #        Default: 1 (From level 1)
 #
 #    AllowPlayerCommands
@@ -1187,7 +1195,9 @@ ChatFlood.MessageDelay = 1
 ChatFlood.MuteTime = 10
 Channel.RestrictedLfg = 0
 Channel.SilentlyGMJoin = 0
-ChannelLevelReq = 1
+ChatLevelReq.Channel = 1
+ChatLevelReq.Whisper = 1
+ChatLevelReq.Say = 1
 AllowPlayerCommands = 1
 
 ###############################################################################
@@ -2136,6 +2146,22 @@ Ra.Secure = 1
 #        to players when they login to a newly created character.
 #       Default: "" - send no text
 #
+#   LevelReq.Trade
+#        The required level of character to be able to trade
+#        Default: 1 (From level 1)
+#
+#   LevelReq.Ticket
+#        The required level of character to be able to write tickets
+#        Default: 1 (From level 1)
+#
+#   LevelReq.Auction
+#        The required level of character to be able to use auction
+#        Default: 1 (From level 1)
+#
+#   LevelReq.Mail
+#        The required level of character to be able to send and receive mail
+#        Default: 1 (From level 1)
+#
 ###############################################################################
 
 PlayerStart.AllReputation = 0
@@ -2154,3 +2180,7 @@ ShowKickInWorld = 0
 RecordUpdateTimeDiffInterval = 60000
 MinRecordUpdateTimeDiff = 10
 PlayerStart.String = ""
+LevelReq.Trade = 1
+LevelReq.Ticket = 1
+LevelReq.Auction = 1
+LevelReq.Mail = 1

@@ -8,6 +8,9 @@ AuthSocket.h
 Main.cpp
 RealmList.cpp
 RealmList.h
+RealmSocket.h
+RealmSocket.cpp
+RealmAcceptor.h
 )
 
 SET(diamond-realmserver_LINK_FLAGS "")

@@ -28,7 +28,7 @@
 #include "UpdateFields.h"
 #include "SharedDefines.h"
 #include "ThreatManager.h"
-#include "HostilRefManager.h"
+#include "HostileRefManager.h"
 #include "FollowerReference.h"
 #include "FollowerRefManager.h"
 #include "Utilities/EventProcessor.h"
@@ -329,6 +329,7 @@ class PetAura;
 class Minion;
 class Guardian;
 class UnitAI;
+class Totem;
 class Transport;
 class Vehicle;
 
@@ -1431,7 +1432,7 @@ class Unit : public WorldObject
         void JumpTo(float speedXY, float speedZ, bool forward = true);
         void JumpTo(WorldObject *obj, float speedZ);
 
-        void SendMonsterStop();
+        void SendMonsterStop(bool on_death = false);
         void SendMonsterMove(float NewPosX, float NewPosY, float NewPosZ, uint32 Time, Player* player = NULL);
         void SendMonsterMove(float NewPosX, float NewPosY, float NewPosZ, uint32 MoveFlags, uint32 time, float speedZ, Player *player = NULL);
         //void SendMonsterMove(float NewPosX, float NewPosY, float NewPosZ, uint8 type, uint32 MovementFlags, uint32 Time, Player* player = NULL);
@@ -1441,9 +1442,9 @@ class Unit : public WorldObject
         void SendMonsterMoveWithSpeedToCurrentDestination(Player* player = NULL);
         void SendMovementFlagUpdate();
 
-        void SendChangeCurrentVictimOpcode(HostilReference* pHostilReference);
+        void SendChangeCurrentVictimOpcode(HostileReference* pHostileReference);
         void SendClearThreatListOpcode();
-        void SendRemoveFromThreatListOpcode(HostilReference* pHostilReference);
+        void SendRemoveFromThreatListOpcode(HostileReference* pHostileReference);
         void SendThreatListUpdate();
 
         void BuildHeartBeatMsg(WorldPacket *data) const;
@@ -1752,9 +1753,9 @@ class Unit : public WorldObject
         void TauntApply(Unit* pVictim);
         void TauntFadeOut(Unit *taunter);
         ThreatManager& getThreatManager() { return m_ThreatManager; }
-        void addHatedBy(HostilReference* pHostilReference) { m_HostilRefManager.insertFirst(pHostilReference); };
-        void removeHatedBy(HostilReference* /*pHostilReference*/ ) { /* nothing to do yet */ }
-        HostilRefManager& getHostilRefManager() { return m_HostilRefManager; }
+        void addHatedBy(HostileReference* pHostileReference) { m_HostileRefManager.insertFirst(pHostileReference); };
+        void removeHatedBy(HostileReference* /*pHostileReference*/ ) { /* nothing to do yet */ }
+        HostileRefManager& getHostileRefManager() { return m_HostileRefManager; }
 
         VisibleAuraMap const *GetVisibleAuras() { return &m_visibleAuras; }
         AuraApplication * GetVisibleAura(uint8 slot)
@@ -1850,8 +1851,8 @@ class Unit : public WorldObject
         static Player* GetPlayer(uint64 guid);
         static Creature* GetCreature(WorldObject& object, uint64 guid);
 
-        MotionMaster* GetMotionMaster() { return &i_motionMaster; }
-
+        MotionMaster* GetMotionMaster(){ return &i_motionMaster; }
+	
         bool IsStopped() const { return !(hasUnitState(UNIT_STAT_MOVING)); }
         void StopMoving();
 
@@ -1955,6 +1956,10 @@ class Unit : public WorldObject
 
         void OutDebugInfo() const;
         virtual bool isBeingLoaded() const { return false;}
+
+	Pet* ToPet(){ if(isPet()) return reinterpret_cast<Pet*>(this); else return NULL; }
+		Totem* ToTotem(){ if(isTotem()) return reinterpret_cast<Totem*>(this); else return NULL; }
+
     protected:
         explicit Unit ();
 
@@ -2060,7 +2065,7 @@ class Unit : public WorldObject
         // Manage all Units threatening us
 //        ThreatManager m_ThreatManager;
         // Manage all Units that are threatened by us
-        HostilRefManager m_HostilRefManager;
+        HostileRefManager m_HostileRefManager;
 
         FollowerRefManager m_FollowingRefManager;
 

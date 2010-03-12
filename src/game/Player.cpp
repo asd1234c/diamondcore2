@@ -2324,7 +2324,7 @@ void Player::SetInWater(bool apply)
     // remove auras that need water/land
     RemoveAurasWithInterruptFlags(apply ? AURA_INTERRUPT_FLAG_NOT_ABOVEWATER : AURA_INTERRUPT_FLAG_NOT_UNDERWATER);
 
-    getHostilRefManager().updateThreatTables();
+    getHostileRefManager().updateThreatTables();
 }
 
 void Player::SetGameMaster(bool on)
@@ -2338,13 +2338,13 @@ void Player::SetGameMaster(bool on)
         if (Pet* pet = GetPet())
         {
             pet->setFaction(35);
-            pet->getHostilRefManager().setOnlineOfflineState(false);
+            pet->getHostileRefManager().setOnlineOfflineState(false);
         }
 
         RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
         ResetContestedPvP();
 
-        getHostilRefManager().setOnlineOfflineState(false);
+        getHostileRefManager().setOnlineOfflineState(false);
         CombatStopWithPets();
 
         SetPhaseMask(PHASEMASK_ANYWHERE,false);             // see and visible in all phases
@@ -2362,7 +2362,7 @@ void Player::SetGameMaster(bool on)
         if (Pet* pet = GetPet())
         {
             pet->setFaction(getFaction());
-            pet->getHostilRefManager().setOnlineOfflineState(true);
+            pet->getHostileRefManager().setOnlineOfflineState(true);
         }
 
         // restore FFA PvP Server state
@@ -2372,7 +2372,7 @@ void Player::SetGameMaster(bool on)
         // restore FFA PvP area state, remove not allowed for GM mounts
         UpdateArea(m_areaUpdateId);
 
-        getHostilRefManager().setOnlineOfflineState(true);
+        getHostileRefManager().setOnlineOfflineState(true);
     }
 
     UpdateObjectVisibility();
@@ -5531,7 +5531,7 @@ void Player::UpdateWeaponSkill (WeaponAttackType attType)
     if (m_form == FORM_TREE)
         return;                                             // use weapon but not skill up
 
-    if (pVictim && pVictim->GetTypeId() == TYPEID_UNIT && (((Creature*)pVictim)->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_NO_SKILLGAIN))
+    if (pVictim && pVictim->GetTypeId() == TYPEID_UNIT && (pVictim->ToCreature()->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_NO_SKILLGAIN))
         return;
 
     uint32 weapon_skill_gain = sWorld.getConfig(CONFIG_SKILL_GAIN_WEAPON);
@@ -6208,10 +6208,10 @@ void Player::RewardReputation(Unit *pVictim, float rate)
     if (!pVictim || pVictim->GetTypeId() == TYPEID_PLAYER)
         return;
 
-    if (((Creature*)pVictim)->IsReputationGainDisabled())
+    if (pVictim->ToCreature()->IsReputationGainDisabled())
         return;
 
-    ReputationOnKillEntry const* Rep = sObjectMgr.GetReputationOnKilEntry(((Creature*)pVictim)->GetCreatureInfo()->Entry);
+    ReputationOnKillEntry const* Rep = sObjectMgr.GetReputationOnKilEntry(pVictim->ToCreature()->GetCreatureInfo()->Entry);
 
     if (!Rep)
         return;
@@ -6374,7 +6374,7 @@ bool Player::RewardHonor(Unit *uVictim, uint32 groupsize, float honor, bool pvpt
         if (!uVictim || uVictim == this || uVictim->GetTypeId() != TYPEID_PLAYER)
             return false;
 
-        if ( GetBGTeam() == ((Player*)uVictim)->GetBGTeam() )
+        if (GetBGTeam() == uVictim->ToPlayer()->GetBGTeam())
             return false;
 
         return true;
@@ -6405,7 +6405,7 @@ bool Player::RewardHonor(Unit *uVictim, uint32 groupsize, float honor, bool pvpt
 
         if ( uVictim->GetTypeId() == TYPEID_PLAYER )
         {
-            Player *pVictim = (Player *)uVictim;
+            Player *pVictim = uVictim->ToPlayer();
 
             if ( GetTeam() == pVictim->GetTeam() && !sWorld.IsFFAPvPRealm() )
                 return false;
@@ -6460,9 +6460,7 @@ bool Player::RewardHonor(Unit *uVictim, uint32 groupsize, float honor, bool pvpt
         }
         else
         {
-            Creature *cVictim = (Creature *)uVictim;
-
-            if (!cVictim->isRacialLeader())
+            if (!uVictim->ToCreature()->isRacialLeader())
                 return false;
 
             honor = 100;                                    // ??? need more info
@@ -7921,7 +7919,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
 
             //TODO: fix this big hack
             if ((go->GetEntry() == BG_AV_OBJECTID_MINE_N || go->GetEntry() == BG_AV_OBJECTID_MINE_S))
-                if ( BattleGround *bg = GetBattleGround())
+                if (BattleGround *bg = GetBattleGround())
                     if (bg->GetTypeID() == BATTLEGROUND_AV)
                         if (!(((BattleGroundAV*)bg)->PlayerCanDoMineQuest(go->GetEntry(),GetTeam())))
                         {
@@ -7931,15 +7929,70 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
 
             if (lootid)
             {
-                sLog.outDebug("       if (lootid)");
                 loot->clear();
-                loot->FillLoot(lootid, LootTemplates_Gameobject, this, false, false, go->GetLootMode());
+
+                Group* group = GetGroup();
+                bool groupRules = (group && go->GetGOInfo()->type == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules);
+
+                // check current RR player and get next if necessary
+                if (groupRules) 
+                    group->UpdateLooterGuid(go, true);
+
+                loot->FillLoot(lootid, LootTemplates_Gameobject, this, !groupRules, false, go->GetLootMode());
+
+                // get next RR player (for next loot)
+                if (groupRules)
+                    group->UpdateLooterGuid(go);
             }
 
             if (loot_type == LOOT_FISHING)
                 go->getFishLoot(loot,this);
 
+            if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
+            {
+                if (Group* group = GetGroup())
+                {
+                    switch (group->GetLootMethod())
+                    {
+                        case GROUP_LOOT:
+                            // GroupLoot: rolls items over threshold. Items with quality < threshold, round robin
+                            group->GroupLoot(loot, go);
+                            break;
+                        case NEED_BEFORE_GREED:
+                            group->NeedBeforeGreed(loot, go);
+                            break;
+                        case MASTER_LOOT:
+                            group->MasterLoot(loot, go);
+                            break;
+                    }
+                }
+            }
+
             go->SetLootState(GO_ACTIVATED);
+        }
+
+        if (go->getLootState() == GO_ACTIVATED)
+        {
+            if (Group* group = GetGroup())
+            {
+                switch (group->GetLootMethod())
+                {
+                    case MASTER_LOOT:
+                        permission = MASTER_PERMISSION;
+                        break;
+                    case FREE_FOR_ALL:
+                        permission = ALL_PERMISSION;
+                        break;
+                    case ROUND_ROBIN:
+                        permission = ROUND_ROBIN_PERMISSION;
+                        break;
+                    default:
+                        permission = GROUP_PERMISSION;
+                        break;
+                }
+            }
+            else 
+                permission = ALL_PERMISSION;
         }
     }
     else if (IS_ITEM_GUID(guid))
@@ -8022,7 +8075,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
             return;
         }
 
-        loot   = &creature->loot;
+        loot = &creature->loot;
 
         if (loot_type == LOOT_PICKPOCKETING)
         {
@@ -8032,7 +8085,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
                 loot->clear();
 
                 if (uint32 lootid = creature->GetCreatureInfo()->pickpocketLootId)
-                    loot->FillLoot(lootid, LootTemplates_Pickpocketing, this, false);
+                    loot->FillLoot(lootid, LootTemplates_Pickpocketing, this, true);
 
                 // Generate extra money for pick pocket loot
                 const uint32 a = urand(0, creature->getLevel()/2);
@@ -8050,37 +8103,25 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
                 recipient = this;
             }
 
-            if (creature->lootForPickPocketed)
-            {
-                creature->lootForPickPocketed = false;
-                loot->clear();
-            }
-
             if (!creature->lootForBody)
             {
                 creature->lootForBody = true;
-                loot->clear();
 
-                if (uint32 lootid = creature->GetCreatureInfo()->lootid)
-                    loot->FillLoot(lootid, LootTemplates_Creature, recipient, false, false, creature->GetLootMode());
-
-                loot->generateMoneyLoot(creature->GetCreatureInfo()->mingold,creature->GetCreatureInfo()->maxgold);
+                // for creature, loot is filled when creature is killed.
 
                 if (Group* group = recipient->GetGroup())
                 {
-                    group->UpdateLooterGuid(creature,true);
-
                     switch (group->GetLootMethod())
                     {
                         case GROUP_LOOT:
-                            // GroupLoot delete items over threshold (threshold even not implemented), and roll them. Items with quality<threshold, round robin
-                            group->GroupLoot(recipient->GetGUID(), loot, creature);
+                            // GroupLoot: rolls items over threshold. Items with quality < threshold, round robin
+                            group->GroupLoot(loot, creature);
                             break;
                         case NEED_BEFORE_GREED:
-                            group->NeedBeforeGreed(recipient->GetGUID(), loot, creature);
+                            group->NeedBeforeGreed(loot, creature);
                             break;
                         case MASTER_LOOT:
-                            group->MasterLoot(recipient->GetGUID(), loot, creature);
+                            group->MasterLoot(loot, creature);
                             break;
                         default:
                             break;
@@ -8092,7 +8133,7 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
             if (loot_type == LOOT_SKINNING)
             {
                 loot->clear();
-                loot->FillLoot(creature->GetCreatureInfo()->SkinLootId, LootTemplates_Skinning, this, false);
+                loot->FillLoot(creature->GetCreatureInfo()->SkinLootId, LootTemplates_Skinning, this, true);
             }
             // set group rights only for loot_type != LOOT_SKINNING
             else
@@ -8101,17 +8142,21 @@ void Player::SendLoot(uint64 guid, LootType loot_type)
                 {
                     if (group == recipient->GetGroup())
                     {
-                        if (group->GetLootMethod() == FREE_FOR_ALL)
-                            permission = ALL_PERMISSION;
-                        else if (group->GetLooterGuid() == GetGUID())
+                        switch (group->GetLootMethod())
                         {
-                            if (group->GetLootMethod() == MASTER_LOOT)
+                            case MASTER_LOOT:
                                 permission = MASTER_PERMISSION;
-                            else
+                                break;
+                            case FREE_FOR_ALL:
                                 permission = ALL_PERMISSION;
+                                break;
+                            case ROUND_ROBIN:
+                                permission = ROUND_ROBIN_PERMISSION;
+                                break;
+                            default:
+                                permission = GROUP_PERMISSION;
+                                break;
                         }
-                        else
-                            permission = GROUP_PERMISSION;
                     }
                     else
                         permission = NONE_PERMISSION;
@@ -12620,15 +12665,15 @@ void Player::ApplyEnchantment(Item *item, EnchantmentSlot slot, bool apply, bool
     if (!pEnchant)
         return;
 
-    if (!ignore_condition && pEnchant->EnchantmentCondition && !((Player*)this)->EnchantmentFitsRequirements(pEnchant->EnchantmentCondition, -1))
+    if (!ignore_condition && pEnchant->EnchantmentCondition && !this->ToPlayer()->EnchantmentFitsRequirements(pEnchant->EnchantmentCondition, -1))
         return;
 
-    if ((pEnchant->requiredLevel) > ((Player*)this)->getLevel())
+    if ((pEnchant->requiredLevel) > this->ToPlayer()->getLevel())
         return;
 
     if ((pEnchant->requiredSkill) > 0)
     {
-       if ((pEnchant->requiredSkillValue) > (((Player*)this)->GetSkillValue(pEnchant->requiredSkill)))
+       if ((pEnchant->requiredSkillValue) > (this->ToPlayer()->GetSkillValue(pEnchant->requiredSkill)))
         return;
     }
 
@@ -12762,111 +12807,111 @@ void Player::ApplyEnchantment(Item *item, EnchantmentSlot slot, bool apply, bool
                             ApplyStatBuffMod(STAT_STAMINA, enchant_amount, apply);
                             break;
                         case ITEM_MOD_DEFENSE_SKILL_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_DEFENSE_SKILL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_DEFENSE_SKILL, enchant_amount, apply);
                             sLog.outDebug("+ %u DEFENCE", enchant_amount);
                             break;
                         case  ITEM_MOD_DODGE_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_DODGE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_DODGE, enchant_amount, apply);
                             sLog.outDebug("+ %u DODGE", enchant_amount);
                             break;
                         case ITEM_MOD_PARRY_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_PARRY, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_PARRY, enchant_amount, apply);
                             sLog.outDebug("+ %u PARRY", enchant_amount);
                             break;
                         case ITEM_MOD_BLOCK_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_BLOCK, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_BLOCK, enchant_amount, apply);
                             sLog.outDebug("+ %u SHIELD_BLOCK", enchant_amount);
                             break;
                         case ITEM_MOD_HIT_MELEE_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_HIT_MELEE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HIT_MELEE, enchant_amount, apply);
                             sLog.outDebug("+ %u MELEE_HIT", enchant_amount);
                             break;
                         case ITEM_MOD_HIT_RANGED_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_HIT_RANGED, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HIT_RANGED, enchant_amount, apply);
                             sLog.outDebug("+ %u RANGED_HIT", enchant_amount);
                             break;
                         case ITEM_MOD_HIT_SPELL_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_HIT_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HIT_SPELL, enchant_amount, apply);
                             sLog.outDebug("+ %u SPELL_HIT", enchant_amount);
                             break;
                         case ITEM_MOD_CRIT_MELEE_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_MELEE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_MELEE, enchant_amount, apply);
                             sLog.outDebug("+ %u MELEE_CRIT", enchant_amount);
                             break;
                         case ITEM_MOD_CRIT_RANGED_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
                             sLog.outDebug("+ %u RANGED_CRIT", enchant_amount);
                             break;
                         case ITEM_MOD_CRIT_SPELL_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
                             sLog.outDebug("+ %u SPELL_CRIT", enchant_amount);
                             break;
 //                        Values from ITEM_STAT_MELEE_HA_RATING to ITEM_MOD_HASTE_RANGED_RATING are never used
 //                        in Enchantments
 //                        case ITEM_MOD_HIT_TAKEN_MELEE_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_HIT_TAKEN_MELEE, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HIT_TAKEN_MELEE, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_HIT_TAKEN_RANGED_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_HIT_TAKEN_RANGED, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HIT_TAKEN_RANGED, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_HIT_TAKEN_SPELL_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_HIT_TAKEN_SPELL, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HIT_TAKEN_SPELL, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_CRIT_TAKEN_MELEE_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_CRIT_TAKEN_RANGED_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_CRIT_TAKEN_SPELL_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_HASTE_MELEE_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_HASTE_MELEE, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HASTE_MELEE, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_HASTE_RANGED_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_HASTE_RANGED, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HASTE_RANGED, enchant_amount, apply);
 //                            break;
                         case ITEM_MOD_HASTE_SPELL_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_HASTE_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HASTE_SPELL, enchant_amount, apply);
                             break;
                         case ITEM_MOD_HIT_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_HIT_MELEE, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_HIT_RANGED, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_HIT_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HIT_MELEE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HIT_RANGED, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HIT_SPELL, enchant_amount, apply);
                             sLog.outDebug("+ %u HIT", enchant_amount);
                             break;
                         case ITEM_MOD_CRIT_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_MELEE, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_MELEE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_RANGED, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_SPELL, enchant_amount, apply);
                             sLog.outDebug("+ %u CRITICAL", enchant_amount);
                             break;
 //                        Values ITEM_MOD_HIT_TAKEN_RATING and ITEM_MOD_CRIT_TAKEN_RATING are never used in Enchantment
 //                        case ITEM_MOD_HIT_TAKEN_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_HIT_TAKEN_MELEE, enchant_amount, apply);
-//                            ((Player*)this)->ApplyRatingMod(CR_HIT_TAKEN_RANGED, enchant_amount, apply);
-//                            ((Player*)this)->ApplyRatingMod(CR_HIT_TAKEN_SPELL, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HIT_TAKEN_MELEE, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HIT_TAKEN_RANGED, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_HIT_TAKEN_SPELL, enchant_amount, apply);
 //                            break;
 //                        case ITEM_MOD_CRIT_TAKEN_RATING:
-//                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
-//                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
-//                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
+//                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
 //                            break;
                         case ITEM_MOD_RESILIENCE_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_MELEE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_RANGED, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_CRIT_TAKEN_SPELL, enchant_amount, apply);
                             sLog.outDebug("+ %u RESILIENCE", enchant_amount);
                             break;
                         case ITEM_MOD_HASTE_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_HASTE_MELEE, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_HASTE_RANGED, enchant_amount, apply);
-                            ((Player*)this)->ApplyRatingMod(CR_HASTE_SPELL, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HASTE_MELEE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HASTE_RANGED, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_HASTE_SPELL, enchant_amount, apply);
                             sLog.outDebug("+ %u HASTE", enchant_amount);
                             break;
                         case ITEM_MOD_EXPERTISE_RATING:
-                            ((Player*)this)->ApplyRatingMod(CR_EXPERTISE, enchant_amount, apply);
+                            this->ToPlayer()->ApplyRatingMod(CR_EXPERTISE, enchant_amount, apply);
                             sLog.outDebug("+ %u EXPERTISE", enchant_amount);
                             break;
                         case ITEM_MOD_ATTACK_POWER:
@@ -13034,7 +13079,7 @@ void Player::PrepareGossipMenu(WorldObject *pSource, uint32 menuId)
 
         if (pSource->GetTypeId() == TYPEID_UNIT)
         {
-            Creature *pCreature = (Creature*)pSource;
+            Creature *pCreature = pSource->ToCreature();
 
             uint32 npcflags = pCreature->GetUInt32Value(UNIT_NPC_FLAGS);
 
@@ -13182,7 +13227,7 @@ void Player::SendPreparedGossip(WorldObject *pSource)
     if (pSource->GetTypeId() == TYPEID_UNIT)
     {
         // in case no gossip flag and quest menu not empty, open quest menu (client expect gossip menu with this flag)
-        if (!((Creature*)pSource)->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_GOSSIP) && !PlayerTalkClass->GetQuestMenu().Empty())
+        if (!pSource->ToCreature()->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_GOSSIP) && !PlayerTalkClass->GetQuestMenu().Empty())
         {
             SendPreparedQuest(pSource->GetGUID());
             return;
@@ -13261,7 +13306,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             break;
         case GOSSIP_OPTION_SPIRITHEALER:
             if (isDead())
-                ((Creature*)pSource)->CastSpell(((Creature*)pSource),17251,true,NULL,NULL,GetGUID());
+                pSource->ToCreature()->CastSpell((pSource->ToCreature()),17251,true,NULL,NULL,GetGUID());
             break;
         case GOSSIP_OPTION_QUESTGIVER:
             PrepareQuestMenu(guid);
@@ -13309,7 +13354,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             SendPetSkillWipeConfirm();
             break;
         case GOSSIP_OPTION_TAXIVENDOR:
-            GetSession()->SendTaxiMenu(((Creature*)pSource));
+            GetSession()->SendTaxiMenu((pSource->ToCreature()));
             break;
         case GOSSIP_OPTION_INNKEEPER:
             PlayerTalkClass->CloseGossip();
@@ -13327,7 +13372,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             GetSession()->SendTabardVendorActivate(guid);
             break;
         case GOSSIP_OPTION_AUCTIONEER:
-            GetSession()->SendAuctionHello(guid, ((Creature*)pSource));
+            GetSession()->SendAuctionHello(guid, (pSource->ToCreature()));
             break;
         case GOSSIP_OPTION_SPIRITGUIDE:
             PrepareGossipMenu(pSource);
@@ -13351,10 +13396,10 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
 
 uint32 Player::GetGossipTextId(WorldObject *pSource)
 {
-    if (!pSource || pSource->GetTypeId() != TYPEID_UNIT || !((Creature*)pSource)->GetDBTableGUIDLow())
+    if (!pSource || pSource->GetTypeId() != TYPEID_UNIT || !pSource->ToCreature()->GetDBTableGUIDLow())
         return DEFAULT_GOSSIP_MESSAGE;
 
-    if (uint32 pos = sObjectMgr.GetNpcGossip(((Creature*)pSource)->GetDBTableGUIDLow()))
+    if (uint32 pos = sObjectMgr.GetNpcGossip(pSource->ToCreature()->GetDBTableGUIDLow()))
         return pos;
 
     return DEFAULT_GOSSIP_MESSAGE;
@@ -13381,7 +13426,7 @@ uint32 Player::GetGossipTextId(uint32 menuId)
 uint32 Player::GetDefaultGossipMenuForSource(WorldObject *pSource)
 {
     if (pSource->GetTypeId() == TYPEID_UNIT)
-        return ((Creature*)pSource)->GetCreatureInfo()->GossipMenuId;
+        return pSource->ToCreature()->GetCreatureInfo()->GossipMenuId;
     else if (pSource->GetTypeId() == TYPEID_GAMEOBJECT)
         return((GameObject*)pSource)->GetGOInfo()->GetGossipMenuId();
 
@@ -13844,7 +13889,7 @@ void Player::AddQuest( Quest const *pQuest, Object *questGiver )
 
         // shared timed quest
         if (questGiver && questGiver->GetTypeId() == TYPEID_PLAYER)
-            limittime = ((Player*)questGiver)->getQuestStatusMap()[quest_id].m_timer / IN_MILISECONDS;
+            limittime = questGiver->ToPlayer()->getQuestStatusMap()[quest_id].m_timer / IN_MILISECONDS;
 
         AddTimedQuest( quest_id );
         questStatusData.m_timer = limittime * IN_MILISECONDS;
@@ -16071,22 +16116,50 @@ bool Player::isAllowedToLoot(Creature* creature)
     if (creature->isDead() && !creature->IsDamageEnoughForLootingAndReward())
        return false;
 
-    if (Player* recipient = creature->GetLootRecipient())
-    {
-        if (recipient == this)
-            return true;
-        if (Group* otherGroup = recipient->GetGroup())
-        {
-            Group* thisGroup = GetGroup();
-            if (!thisGroup)
-                return false;
-            return thisGroup == otherGroup;
-        }
+    Loot* loot = &creature->loot;
+    if (loot->items.size() == 0)
         return false;
-    }
-    else
+
+    Player* recipient = creature->GetLootRecipient();
+    if (!recipient)
         // prevent other players from looting if the recipient got disconnected
         return !creature->hasLootRecipient();
+
+    Group* recipientGroup = recipient->GetGroup();
+    if (!recipientGroup)
+        return (this == recipient);
+
+    Group* thisGroup = GetGroup();
+    if (!thisGroup || thisGroup != recipientGroup)
+        return false;
+
+    switch (thisGroup->GetLootMethod())
+    {
+        case FREE_FOR_ALL:
+            return true;
+        case ROUND_ROBIN:
+        case MASTER_LOOT:
+            // may only loot if the player is the loot roundrobin player
+            // or if there are free/quest/conditional item for the player
+            if (loot->roundRobinPlayer == 0 || loot->roundRobinPlayer == GetGUID())
+                return true;
+    
+            return loot->hasItemFor(this);
+        case GROUP_LOOT:
+        case NEED_BEFORE_GREED:
+            // may only loot if the player is the loot roundrobin player
+            // or item over threshold (so roll(s) can be launched)
+            // or if there are free/quest/conditional item for the player
+            if (loot->roundRobinPlayer == 0 || loot->roundRobinPlayer == GetGUID())
+                return true;
+
+            if (loot->hasOverThresholdItem())
+                return true;
+
+            return loot->hasItemFor(this);
+    }
+
+    return false;
 }
 
 void Player::_LoadActions(QueryResult_AutoPtr result, bool startup)
@@ -16102,11 +16175,7 @@ void Player::_LoadActions(QueryResult_AutoPtr result, bool startup)
             uint8 type = fields[2].GetUInt8();
 
             if (ActionButton* ab = addActionButton(button, action, type))
-            {
-                ab->uState = ACTIONBUTTON_UNCHANGED;
-                if (!startup) // Switching specs
-                    ab->canRemoveByClient = false;
-            }
+				ab->uState = ACTIONBUTTON_UNCHANGED;
             else
             {
                 sLog.outError( "  ...at loading, and will deleted in DB also");
@@ -18040,7 +18109,7 @@ void Player::StopCastingCharm()
 
     if (charm->GetTypeId() == TYPEID_UNIT)
     {
-        if (((Creature*)charm)->HasUnitTypeMask(UNIT_MASK_PUPPET))
+        if (charm->ToCreature()->HasUnitTypeMask(UNIT_MASK_PUPPET))
             ((Puppet*)charm)->UnSummon();
         else if (charm->IsVehicle())
             ExitVehicle();
@@ -18270,7 +18339,7 @@ void Player::VehicleSpellInitialize()
 
     for (uint32 i = 0; i < CREATURE_MAX_SPELLS; ++i)
     {
-        uint32 spellId = ((Creature*)veh)->m_spells[i];
+        uint32 spellId = veh->ToCreature()->m_spells[i];
         if (!spellId)
             continue;
 
@@ -18311,7 +18380,7 @@ void Player::CharmSpellInitialize()
     uint8 addlist = 0;
     if (charm->GetTypeId() != TYPEID_PLAYER)
     {
-        CreatureInfo const *cinfo = ((Creature*)charm)->GetCreatureInfo();
+        CreatureInfo const *cinfo = charm->ToCreature()->GetCreatureInfo();
         //if (cinfo && cinfo->type == CREATURE_TYPE_DEMON && getClass() == CLASS_WARLOCK)
         {
             for (uint32 i = 0; i < MAX_SPELL_CHARM; ++i)
@@ -18328,7 +18397,7 @@ void Player::CharmSpellInitialize()
     data << uint32(0);
 
     if (charm->GetTypeId() != TYPEID_PLAYER)
-        data << uint8(((Creature*)charm)->GetReactState()) << uint8(charmInfo->GetCommandState()) << uint16(0);
+        data << uint8(charm->ToCreature()->GetReactState()) << uint8(charmInfo->GetCommandState()) << uint16(0);
     else
         data << uint8(0) << uint8(0) << uint16(0);
 
@@ -18901,7 +18970,7 @@ void Player::CleanupAfterTaxiFlight()
     m_taxi.ClearTaxiDestinations();        // not destinations, clear source node
     Unmount();
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_TAXI_FLIGHT);
-    getHostilRefManager().setOnlineOfflineState(true);
+    getHostileRefManager().setOnlineOfflineState(true);
 }
 
 void Player::ContinueTaxiFlight()
@@ -19851,9 +19920,9 @@ bool Player::canSeeOrDetect(Unit const* u, bool detect, bool inVisibleList, bool
     // including case when player is out of world
     bool at_same_transport =
         GetTransport() && u->GetTypeId() == TYPEID_PLAYER
-        && !GetSession()->PlayerLogout() && !((Player*)u)->GetSession()->PlayerLogout()
-        && !GetSession()->PlayerLoading() && !((Player*)u)->GetSession()->PlayerLoading()
-        && GetTransport() == ((Player*)u)->GetTransport();
+        && !GetSession()->PlayerLogout() && !u->ToPlayer()->GetSession()->PlayerLogout()
+        && !GetSession()->PlayerLoading() && !u->ToPlayer()->GetSession()->PlayerLoading()
+        && GetTransport() == u->ToPlayer()->GetTransport();
 
     // not in world
     if (!at_same_transport && (!IsInWorld() || !u->IsInWorld()))
@@ -19917,7 +19986,7 @@ bool Player::canSeeOrDetect(Unit const* u, bool detect, bool inVisibleList, bool
         if (isGameMaster())
         {
             if (u->GetTypeId() == TYPEID_PLAYER)
-                return ((Player *)u)->GetSession()->GetSecurity() <= GetSession()->GetSecurity();
+                return u->ToPlayer()->GetSession()->GetSecurity() <= GetSession()->GetSecurity();
             else
                 return true;
         }
@@ -19930,14 +19999,14 @@ bool Player::canSeeOrDetect(Unit const* u, bool detect, bool inVisibleList, bool
         if (isGameMaster())
         {
             if (u->GetTypeId() == TYPEID_PLAYER)
-                return ((Player*)u)->GetSession()->GetSecurity() <= GetSession()->GetSecurity();
+                return u->ToPlayer()->GetSession()->GetSecurity() <= GetSession()->GetSecurity();
             else
                 return true;
         }
 
         // player see other player with stealth/invisibility only if he in same group or raid or same team (raid/team case dependent from conf setting)
         if (!m_mover->canDetectInvisibilityOf(u))
-            if (!(u->GetTypeId() == TYPEID_PLAYER && !IsHostileTo(u) && IsGroupVisibleFor(((Player*)u))))
+            if (!(u->GetTypeId() == TYPEID_PLAYER && !IsHostileTo(u) && IsGroupVisibleFor(const_cast<Player*>(u->ToPlayer()))))
                 return false;
     }
 
@@ -19950,7 +20019,7 @@ bool Player::canSeeOrDetect(Unit const* u, bool detect, bool inVisibleList, bool
         if (!isAlive())
             detect = false;
         if (m_DetectInvTimer < 300 || !HaveAtClient(u))
-            if (!(u->GetTypeId() == TYPEID_PLAYER && !IsHostileTo(u) && IsGroupVisibleFor(((Player*)u))))
+            if (!(u->GetTypeId() == TYPEID_PLAYER && !IsHostileTo(u) && IsGroupVisibleFor(const_cast<Player*>(u->ToPlayer()))))
                 if (!detect || !m_mover->canDetectStealthOf(u, GetDistance(u)))
                     return false;
     }
@@ -20061,7 +20130,7 @@ inline void BeforeVisibilityDestroy(T* /*t*/, Player* /*p*/)
 template<>
 inline void BeforeVisibilityDestroy<Creature>(Creature* t, Player* p)
 {
-    if (p->GetPetGUID()==t->GetGUID() && ((Creature*)t)->isPet())
+    if (p->GetPetGUID()==t->GetGUID() && t->ToCreature()->isPet())
         ((Pet*)t)->Remove(PET_SAVE_NOT_IN_SLOT, true);
 }
 
@@ -20072,7 +20141,7 @@ void Player::UpdateVisibilityOf(WorldObject* target)
         if (!target->isVisibleForInState(this, true))
         {
             if (target->GetTypeId()==TYPEID_UNIT)
-                BeforeVisibilityDestroy<Creature>((Creature*)target,this);
+                BeforeVisibilityDestroy<Creature>(target->ToCreature(),this);
 
             target->DestroyForPlayer(this);
             m_clientGUIDs.erase(target->GetGUID());
@@ -20136,22 +20205,16 @@ void Player::UpdateVisibilityOf(T* target, UpdateData& data, std::set<Unit*>& vi
             #endif
         }
     }
-    else //if (visibleNow.size() < 30 || target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsVehicle())
-    {
-        if (target->isVisibleForInState(this,false))
-        {
-            //if (target->isType(TYPEMASK_UNIT) && ((Unit*)target)->m_Vehicle)
-            //    UpdateVisibilityOf(((Unit*)target)->m_Vehicle, data, visibleNow);
-
-            target->BuildCreateUpdateBlockForPlayer(&data, this);
-            UpdateVisibilityOf_helper(m_clientGUIDs,target,visibleNow);
-
-            #ifdef DIAMOND_DEBUG
-            if ((sLog.getLogFilter() & LOG_FILTER_VISIBILITY_CHANGES)==0)
-                sLog.outDebug("Object %u (Type: %u, Entry: %u) is visible now for player %u. Distance = %f",target->GetGUIDLow(),target->GetTypeId(),target->GetEntry(),GetGUIDLow(),GetDistance(target));
-            #endif
-        }
-    }
+    else if (target->isVisibleForInState(this,false))
+	{
+		target->BuildCreateUpdateBlockForPlayer(&data, this);
+		UpdateVisibilityOf_helper(m_clientGUIDs,target,visibleNow);
+	
+	#ifdef DIAMOND_DEBUG
+		if ((sLog.getLogFilter() & LOG_FILTER_VISIBILITY_CHANGES)==0)
+			sLog.outDebug("Object %u (Type: %u, Entry: %u) is visible now for player %u. Distance = %f",target->GetGUIDLow(),target->GetTypeId(),target->GetEntry(),GetGUIDLow(),GetDistance(target));
+	#endif
+	}
 }
 
 template void Player::UpdateVisibilityOf(Player*        target, UpdateData& data, std::set<Unit*>& visibleNow);
@@ -21116,9 +21179,9 @@ bool Player::isHonorOrXPTarget(Unit* pVictim)
 
     if (pVictim->GetTypeId() == TYPEID_UNIT)
     {
-        if (((Creature*)pVictim)->isTotem() ||
-            ((Creature*)pVictim)->isPet() ||
-            ((Creature*)pVictim)->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_NO_XP_AT_KILL)
+        if (pVictim->ToCreature()->isTotem() ||
+            pVictim->ToCreature()->isPet() ||
+            pVictim->ToCreature()->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_NO_XP_AT_KILL)
                 return false;
     }
     return true;
@@ -21195,7 +21258,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
                     {
                         // normal creature (not pet/etc) can be only in !PvP case
                         if (pVictim->GetTypeId() == TYPEID_UNIT)
-                            pGroupGuy->KilledMonster(((Creature*)pVictim)->GetCreatureInfo(), pVictim->GetGUID());
+                            pGroupGuy->KilledMonster(pVictim->ToCreature()->GetCreatureInfo(), pVictim->GetGUID());
                     }
                 }
             }
@@ -21226,7 +21289,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
 
             // normal creature (not pet/etc) can be only in !PvP case
             if (pVictim->GetTypeId() == TYPEID_UNIT)
-                KilledMonster(((Creature*)pVictim)->GetCreatureInfo(), pVictim->GetGUID());
+                KilledMonster(pVictim->ToCreature()->GetCreatureInfo(), pVictim->GetGUID());
         }
     }
     return xp || honored_kill;
@@ -21835,7 +21898,7 @@ bool Player::isTotalImmunity()
 void Player::UpdateCharmedAI()
 {
     //This should only called in Player::Update
-    Creature *charmer = (Creature*)GetCharmer();
+  Creature *charmer = GetCharmer()->ToCreature();
 
     //kill self if charm aura has infinite duration
     if (charmer->IsInEvadeMode())

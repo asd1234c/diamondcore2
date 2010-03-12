@@ -1098,28 +1098,17 @@ bool ChatHandler::HandleModifyHPCommand(const char* args)
     if (!*args)
         return false;
 
-    //    char* pHp = strtok((char*)args, " ");
-    //    if (!pHp)
-    //        return false;
-
-    //    char* pHpMax = strtok(NULL, " ");
-    //    if (!pHpMax)
-    //        return false;
-
-    //    int32 hpm = atoi(pHpMax);
-    //    int32 hp = atoi(pHp);
-
     int32 hp = atoi((char*)args);
     int32 hpm = atoi((char*)args);
 
-    if (hp <= 0 || hpm <= 0 || hpm < hp)
+    if (hp < 1 || hpm < 1 || hpm < hp)
     {
         SendSysMessage(LANG_BAD_VALUE);
         SetSentErrorMessage(true);
         return false;
     }
 
-    Unit *chr = getSelectedUnit();
+    Player *chr = getSelectedPlayer();
     if (chr == NULL)
     {
         SendSysMessage(LANG_NO_CHAR_SELECTED);
@@ -1127,16 +1116,15 @@ bool ChatHandler::HandleModifyHPCommand(const char* args)
         return false;
     }
 
-    // check online security
-    if (chr->GetTypeId() == TYPEID_PLAYER && HasLowerSecurity((Player*)chr, 0))
+    if (HasLowerSecurity(chr, 0))
         return false;
 
-    PSendSysMessage(LANG_YOU_CHANGE_HP, GetNameLink((Player*)chr).c_str(), hp, hpm);
-    if (chr->GetTypeId() == TYPEID_PLAYER && needReportToTarget((Player*)chr))
-        ChatHandler((Player*)chr).PSendSysMessage(LANG_YOURS_HP_CHANGED, GetNameLink().c_str(), hp, hpm);
+    PSendSysMessage(LANG_YOU_CHANGE_HP, GetNameLink(chr).c_str(), hp, hpm);
+    if (needReportToTarget(chr))
+        ChatHandler(chr).PSendSysMessage(LANG_YOURS_HP_CHANGED, GetNameLink().c_str(), hp, hpm);
 
-    chr->SetMaxHealth( hpm );
-    chr->SetHealth( hp );
+    chr->SetMaxHealth(hpm);
+    chr->SetHealth(hp);
 
     return true;
 }
@@ -1478,20 +1466,20 @@ bool ChatHandler::HandleModifyTalentCommand (const char* args)
         // check online security
         if (HasLowerSecurity((Player*)target, 0))
             return false;
-        ((Player*)target)->SetFreeTalentPoints(tp);
-        ((Player*)target)->SendTalentsInfoData(false);
+        target->ToPlayer()->SetFreeTalentPoints(tp);
+        target->ToPlayer()->SendTalentsInfoData(false);
         return true;
     }
-    else if (((Creature*)target)->isPet())
+    else if (target->ToCreature()->isPet())
     {
         Unit *owner = target->GetOwner();
-        if (owner && owner->GetTypeId() == TYPEID_PLAYER && ((Pet *)target)->IsPermanentPetFor((Player*)owner))
+        if (owner && owner->GetTypeId() == TYPEID_PLAYER && ((Pet *)target)->IsPermanentPetFor(owner->ToPlayer()))
         {
             // check online security
             if (HasLowerSecurity((Player*)owner, 0))
                 return false;
             ((Pet *)target)->SetFreeTalentPoints(tp);
-            ((Player*)owner)->SendTalentsInfoData(true);
+            owner->ToPlayer()->SendTalentsInfoData(true);
             return true;
         }
     }
@@ -2140,7 +2128,7 @@ bool ChatHandler::HandleModifyBitCommand(const char* args)
     }
 
     // check online security
-    if (unit->GetTypeId() == TYPEID_PLAYER && HasLowerSecurity((Player *)unit, 0))
+    if (unit->GetTypeId() == TYPEID_PLAYER && HasLowerSecurity(unit->ToPlayer(), 0))
         return false;
 
     char* pField = strtok((char*)args, " ");

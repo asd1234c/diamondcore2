@@ -274,7 +274,7 @@ void WorldSession::HandleLootReleaseOpcode( WorldPacket & recv_data )
         DoLootRelease(lguid);
 }
 
-void WorldSession::DoLootRelease( uint64 lguid )
+void WorldSession::DoLootRelease(uint64 lguid)
 {
     Player  *player = GetPlayer();
     Loot    *loot;
@@ -364,13 +364,29 @@ void WorldSession::DoLootRelease( uint64 lguid )
             loot->clear();
         }
         else
+        {
             // not fully looted object
             go->SetLootState(GO_ACTIVATED);
+
+            // if the round robin player release, reset it.
+            if (player->GetGUID() == loot->roundRobinPlayer)
+            {
+                if (Group* pGroup = player->GetGroup())
+                {
+                    if (pGroup->GetLootMethod() != MASTER_LOOT)
+                    {
+                        loot->roundRobinPlayer = 0;
+                    }
+                }
+                else
+                    loot->roundRobinPlayer = 0;
+            }
+        }
     }
     else if (IS_CORPSE_GUID(lguid))        // ONLY remove insignia at BG
     {
         Corpse *corpse = ObjectAccessor::GetCorpse(*player, lguid);
-        if (!corpse || !corpse->IsWithinDistInMap(_player,INTERACTION_DISTANCE) )
+        if (!corpse || !corpse->IsWithinDistInMap(_player,INTERACTION_DISTANCE))
             return;
 
         loot = &corpse->loot;
@@ -390,7 +406,7 @@ void WorldSession::DoLootRelease( uint64 lguid )
         ItemPrototype const* proto = pItem->GetProto();
 
         // destroy only 5 items from stack in case prospecting and milling
-        if ( (proto->BagFamily & (BAG_FAMILY_MASK_MINING_SUPP|BAG_FAMILY_MASK_HERBS)) &&
+        if ((proto->BagFamily & (BAG_FAMILY_MASK_MINING_SUPP|BAG_FAMILY_MASK_HERBS)) &&
             proto->Class == ITEM_CLASS_TRADE_GOODS)
         {
             pItem->m_lootGenerated = false;
@@ -405,8 +421,8 @@ void WorldSession::DoLootRelease( uint64 lguid )
             player->DestroyItemCount(pItem, count, true);
         }
         else
-            // FIXME: item don't must be deleted in case not fully looted state. But this pre-request implement loot saving in DB at item save. Or checting possible.
-            player->DestroyItem( pItem->GetBagSlot(),pItem->GetSlot(), true);
+            // FIXME: item must not be deleted in case not fully looted state. But this pre-request implement loot saving in DB at item save. Or cheating possible.
+            player->DestroyItem(pItem->GetBagSlot(),pItem->GetSlot(), true);
         return;                                             // item can be looted only single player
     }
     else
@@ -414,17 +430,10 @@ void WorldSession::DoLootRelease( uint64 lguid )
         Creature* pCreature = GetPlayer()->GetMap()->GetCreature(lguid);
 
         bool ok_loot = pCreature && pCreature->isAlive() == (player->getClass()==CLASS_ROGUE && pCreature->lootForPickPocketed);
-        if ( !ok_loot || !pCreature->IsWithinDistInMap(_player,INTERACTION_DISTANCE) )
+        if (!ok_loot || !pCreature->IsWithinDistInMap(_player,INTERACTION_DISTANCE))
             return;
 
         loot = &pCreature->loot;
-
-        // update next looter
-        if (Player *recipient = pCreature->GetLootRecipient())
-            if (Group* group = recipient->GetGroup())
-                if (group->GetLooterGuid() == player->GetGUID())
-                    group->UpdateLooterGuid(pCreature);
-
         if (loot->isLooted())
         {
             // skip pickpocketing loot for speed, skinning timer redunction is no-op in fact
@@ -432,7 +441,28 @@ void WorldSession::DoLootRelease( uint64 lguid )
                 pCreature->AllLootRemovedFromCorpse();
 
             pCreature->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+            pCreature->SetLootRecipient(NULL);
             loot->clear();
+        }
+        else 
+        {
+            // if the round robin player release, reset it.
+            if (player->GetGUID() == loot->roundRobinPlayer)
+            {
+                if (Group* pGroup = player->GetGroup())
+                {
+                    if (pGroup->GetLootMethod() != MASTER_LOOT)
+                    {
+                        loot->roundRobinPlayer = 0;
+                        pGroup->SendLooter(pCreature, NULL);
+
+                        // force update of dynamic flags, otherwise other group's players still not able to loot.
+                        pCreature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
+                    }
+                }
+                else
+                    loot->roundRobinPlayer = 0;
+            }
         }
     }
 

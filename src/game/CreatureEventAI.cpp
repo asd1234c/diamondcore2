@@ -267,7 +267,7 @@ bool CreatureEventAI::ProcessEvent(CreatureEventAIHolder& pHolder, Unit* pAction
                 return false;
 
             //Creature id doesn't match up
-            if (((Creature*)pActionInvoker)->GetEntry() != event.summon_unit.creatureId)
+            if (pActionInvoker->ToCreature()->GetEntry() != event.summon_unit.creatureId)
                 return false;
 
             //Repeat Timers
@@ -525,8 +525,8 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
             break;
         case ACTION_T_THREAT_ALL_PCT:
         {
-            std::list<HostilReference*>& threatList = m_creature->getThreatManager().getThreatList();
-            for (std::list<HostilReference*>::iterator i = threatList.begin(); i != threatList.end(); ++i)
+            std::list<HostileReference*>& threatList = m_creature->getThreatManager().getThreatList();
+            for (std::list<HostileReference*>::iterator i = threatList.begin(); i != threatList.end(); ++i)
                 if (Unit* Temp = Unit::GetUnit(*m_creature,(*i)->getUnitGuid()))
                     m_creature->getThreatManager().modifyThreatPercent(Temp, action.threat_all_pct.percent);
             break;
@@ -534,12 +534,12 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
         case ACTION_T_QUEST_EVENT:
             if (Unit* target = GetTargetByType(action.quest_event.target, pActionInvoker))
                 if (target->GetTypeId() == TYPEID_PLAYER)
-                    ((Player*)target)->AreaExploredOrEventHappens(action.quest_event.questId);
+                    target->ToPlayer()->AreaExploredOrEventHappens(action.quest_event.questId);
             break;
         case ACTION_T_CAST_EVENT:
             if (Unit* target = GetTargetByType(action.cast_event.target, pActionInvoker))
                 if (target->GetTypeId() == TYPEID_PLAYER)
-                    ((Player*)target)->CastedCreatureOrGO(action.cast_event.creatureId, m_creature->GetGUID(), action.cast_event.spellId);
+                    target->ToPlayer()->CastedCreatureOrGO(action.cast_event.creatureId, m_creature->GetGUID(), action.cast_event.spellId);
             break;
         case ACTION_T_SET_UNIT_FIELD:
         {
@@ -575,19 +575,39 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
             //Allow movement (create new targeted movement gen only if idle)
             if (CombatMovementEnabled)
             {
-                if (action.combat_movement.melee && m_creature->isInCombat())
+                Unit* victim = m_creature->getVictim();
+                if (m_creature->isInCombat() && victim)
+                {
+                    if (action.combat_movement.melee)
+                    {
+                        m_creature->addUnitState(UNIT_STAT_MELEE_ATTACKING);
                     if (Unit* victim = m_creature->getVictim())
                         m_creature->SendMeleeAttackStart(victim);
 
-                m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), AttackDistance, AttackAngle);
+                } 
+                    if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+                    {
+                        //m_creature->GetMotionMaster()->Clear(false);
+                        m_creature->GetMotionMaster()->MoveChase(victim, AttackDistance, AttackAngle); // Targeted movement generator will start melee automatically, no need to send it explicitly
+                    }
+                }
             }
             else
-            {
-                if (action.combat_movement.melee && m_creature->isInCombat())
-                    if (Unit* victim = m_creature->getVictim())
+            {    
+                if (m_creature->isInCombat())
+                {
+                    Unit* victim = m_creature->getVictim();
+                    if (action.combat_movement.melee && victim)
+                    {
+                        m_creature->clearUnitState(UNIT_STAT_MELEE_ATTACKING);
                         m_creature->SendMeleeAttackStop(victim);
 
-                m_creature->GetMotionMaster()->MoveIdle();
+                }    
+                    if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == TARGETED_MOTION_TYPE)
+                    {
+                        m_creature->GetMotionMaster()->MoveIdle();
+                    }
+                }
             }
             break;
         case ACTION_T_SET_PHASE:
@@ -622,16 +642,16 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
             {
                 if (Unit* Temp = Unit::GetUnit(*m_creature,pActionInvoker->GetGUID()))
                     if (Temp->GetTypeId() == TYPEID_PLAYER)
-                        ((Player*)Temp)->GroupEventHappens(action.quest_event_all.questId,m_creature);
+                        Temp->ToPlayer()->GroupEventHappens(action.quest_event_all.questId,m_creature);
             }
             break;
         case ACTION_T_CAST_EVENT_ALL:
         {
-            std::list<HostilReference*>& threatList = m_creature->getThreatManager().getThreatList();
-            for (std::list<HostilReference*>::iterator i = threatList.begin(); i != threatList.end(); ++i)
+            std::list<HostileReference*>& threatList = m_creature->getThreatManager().getThreatList();
+            for (std::list<HostileReference*>::iterator i = threatList.begin(); i != threatList.end(); ++i)
                 if (Unit* Temp = Unit::GetUnit(*m_creature,(*i)->getUnitGuid()))
                     if (Temp->GetTypeId() == TYPEID_PLAYER)
-                        ((Player*)Temp)->CastedCreatureOrGO(action.cast_event_all.creatureId, m_creature->GetGUID(), action.cast_event_all.spellId);
+                        Temp->ToPlayer()->CastedCreatureOrGO(action.cast_event_all.creatureId, m_creature->GetGUID(), action.cast_event_all.spellId);
             break;
         }
         case ACTION_T_REMOVEAURASFROMSPELL:
@@ -1105,9 +1125,9 @@ void CreatureEventAI::UpdateAI(const uint32 diff)
 inline Unit* CreatureEventAI::SelectUnit(AttackingTarget target, uint32 position)
 {
     //ThreatList m_threatlist;
-    std::list<HostilReference*>& m_threatlist = m_creature->getThreatManager().getThreatList();
-    std::list<HostilReference*>::iterator i = m_threatlist.begin();
-    std::list<HostilReference*>::reverse_iterator r = m_threatlist.rbegin();
+    std::list<HostileReference*>& m_threatlist = m_creature->getThreatManager().getThreatList();
+    std::list<HostileReference*>::iterator i = m_threatlist.begin();
+    std::list<HostileReference*>::reverse_iterator r = m_threatlist.rbegin();
 
     if (position >= m_threatlist.size() || !m_threatlist.size())
         return NULL;
